@@ -14,6 +14,8 @@ import {
   CardBody,
   IconButton,
   Text,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import { FiPlus, FiTrash2, FiMove } from 'react-icons/fi';
 
@@ -81,8 +83,19 @@ export default function ProgramTab({ data, onChange }: ProgramTabProps) {
 
   return (
     <VStack spacing={4} align="stretch">
+      <Alert status="info" borderRadius="md">
+        <AlertIcon />
+        <Box>
+          <Text fontWeight="medium">Pour un mariage sur plusieurs jours</Text>
+          <Text fontSize="sm">
+            Utilisez l'onglet "Sous-événements" pour définir chaque partie (Mairie, Henné, Houppa, Chabbat...)
+            avec sa propre date, horaire et lieu.
+          </Text>
+        </Box>
+      </Alert>
+      
       <Text color="gray.600" mb={2}>
-        Définissez le déroulé de votre événement. Les étapes seront affichées dans l'ordre.
+        Programme simplifié pour un événement sur une journée. Les étapes seront affichées dans l'ordre.
       </Text>
 
       {program.map((step: any, index: number) => (

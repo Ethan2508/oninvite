@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getPersonalizedProgram } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -143,16 +144,14 @@ const PersonalizedProgramScreen: React.FC = () => {
   const loadProgram = async () => {
     try {
       const code = await AsyncStorage.getItem('guest_personal_code');
+      const eventId = await AsyncStorage.getItem('event_id') || 'demo';
       
       if (code) {
-        // Try to fetch from API
-        const response = await fetch(
-          `/api/events/demo/guests/${code}/program`
-        );
+        // Utiliser le service API centralisé
+        const data = await getPersonalizedProgram(eventId, code) as any;
         
-        if (response.ok) {
-          const data = await response.json();
-          setProgram(data.sub_events || []);
+        if (data?.sub_events?.length > 0) {
+          setProgram(data.sub_events);
         } else {
           setProgram(getDemoProgram());
         }

@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { getPersonalizedProgram, submitSubEventRsvp } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -49,12 +50,12 @@ interface SubEventRSVP {
   maxGuests: number;
 }
 
-// Demo data
+// Demo data avec format ISO pour cohérence avec l'API
 const getDemoRSVPs = (): SubEventRSVP[] => [
   {
     id: '1',
     name: 'Cérémonie civile',
-    date: '14 septembre 2024',
+    date: '2026-09-14',
     time: '11:00',
     location: 'Mairie du 16ème',
     status: 'pending',
@@ -64,7 +65,7 @@ const getDemoRSVPs = (): SubEventRSVP[] => [
   {
     id: '2',
     name: 'Cérémonie religieuse',
-    date: '14 septembre 2024',
+    date: '2026-09-14',
     time: '16:00',
     location: 'Synagogue de la Victoire',
     status: 'pending',
@@ -74,7 +75,7 @@ const getDemoRSVPs = (): SubEventRSVP[] => [
   {
     id: '3',
     name: 'Dîner & Soirée',
-    date: '14 septembre 2024',
+    date: '2026-09-14',
     time: '19:30',
     location: 'Pavillon Royal',
     status: 'pending',
@@ -84,7 +85,7 @@ const getDemoRSVPs = (): SubEventRSVP[] => [
   {
     id: '4',
     name: 'Brunch du lendemain',
-    date: '15 septembre 2024',
+    date: '2026-09-15',
     time: '12:00',
     location: 'Le Bristol Paris',
     status: 'pending',
@@ -92,6 +93,21 @@ const getDemoRSVPs = (): SubEventRSVP[] => [
     maxGuests: 2,
   },
 ];
+
+// Formater une date ISO en format français lisible
+const formatDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+};
 
 const SubEventRSVPScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -124,12 +140,25 @@ const SubEventRSVPScreen: React.FC = () => {
   const loadRSVPs = async () => {
     try {
       const code = await AsyncStorage.getItem('guest_personal_code');
+      const eventId = await AsyncStorage.getItem('event_id') || 'demo';
+      
       if (code) {
-        // Try API
-        const response = await fetch(`/api/events/demo/guests/${code}/rsvps`);
-        if (response.ok) {
-          const data = await response.json();
-          setRsvps(data.sub_events || getDemoRSVPs());
+        // Utiliser le service API centralisé
+        const program = await getPersonalizedProgram(eventId, code) as any;
+        
+        if (program?.sub_events?.length > 0) {
+          // Transformer les sous-événements en format SubEventRSVP
+          const formattedRsvps: SubEventRSVP[] = program.sub_events.map((se: any) => ({
+            id: se.slug,
+            name: se.name,
+            date: se.date || '',
+            time: se.start_time || '',
+            location: se.location_name || '',
+            status: se.rsvp_status || 'pending',
+            attendees: se.attendees_count || 1,
+            maxGuests: 2,
+          }));
+          setRsvps(formattedRsvps);
         } else {
           setRsvps(getDemoRSVPs());
         }
@@ -137,6 +166,7 @@ const SubEventRSVPScreen: React.FC = () => {
         setRsvps(getDemoRSVPs());
       }
     } catch (error) {
+      console.log('Falling back to demo data:', error);
       setRsvps(getDemoRSVPs());
     } finally {
       setLoading(false);
@@ -150,23 +180,23 @@ const SubEventRSVPScreen: React.FC = () => {
   };
 
   const updateAttendees = (id: string, delta: number) => {
-    setRsvps(prev => prev.map(r => {
-      if (r.id === id) {
-        const newCount = Math.max(1, Math.min(r.maxGuests, r.attendees + delta));
-        return { ...r, attendees: newCount };
-      }
-      return r;
-    }));
-  };
-
-  const handleSubmit = async () => {
-    setSubmitting(true);
-
-    try {
-      const code = await AsyncStorage.getItem('guest_personal_code');
+    seconst eventId = await AsyncStorage.getItem('event_id') || 'demo';
       
-      await fetch(`/api/events/demo/guests/${code}/rsvps`, {
-        method: 'POST',
+      if (code) {
+        await submitSubEventRsvp(eventId, code, {
+          sub_event_rsvps: rsvps.map(r => ({
+            sub_event_id: r.id,
+            status: r.status === 'pending' ? 'confirmed' : r.status,
+            attendees_count: r.attendees,
+          })),
+          dietary: dietaryRestrictions || undefined,
+          allergies: allergies || undefined,
+          message: message || undefined,
+        });
+      }
+    } catch (error) {
+      // Demo mode - continue anyway
+      console.log('RSVP submit error (demo mode):', error);OST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rsvps: rsvps.map(r => ({
@@ -291,7 +321,7 @@ const SubEventRSVPScreen: React.FC = () => {
                 <View style={styles.eventMeta}>
                   <View style={styles.metaRow}>
                     <Ionicons name="calendar-outline" size={14} color={COLORS.textLight} />
-                    <Text style={styles.metaText}>{event.date}</Text>
+                    <Text style={styles.metaText}>{formatDate(event.date)}</Text>
                   </View>
                   <View style={styles.metaRow}>
                     <Ionicons name="time-outline" size={14} color={COLORS.textLight} />

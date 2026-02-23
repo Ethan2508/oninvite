@@ -240,12 +240,15 @@ export const searchSeating = async (eventId: string, name: string) => {
 // ============================================================================
 
 /**
- * Identifier un invité par son nom ou code personnel
+ * Identifier un invité par son nom, email ou téléphone
  */
-export const identifyGuest = async (eventId: string, query: string) => {
+export const identifyGuest = async (
+  eventId: string, 
+  data: { name?: string; email?: string; phone?: string }
+) => {
   return fetchAPI(`/api/events/${eventId}/guests/identify`, {
     method: 'POST',
-    body: JSON.stringify({ query }),
+    body: JSON.stringify(data),
   });
 };
 
@@ -269,11 +272,16 @@ export const getPersonalizedProgram = async (eventId: string, personalCode: stri
 export const submitSubEventRsvp = async (
   eventId: string, 
   personalCode: string, 
-  rsvps: Array<{ sub_event_id: string; status: 'confirmed' | 'declined'; attendees_count?: number }>
+  data: {
+    sub_event_rsvps: Array<{ sub_event_id: string; status: 'confirmed' | 'declined'; attendees_count?: number }>;
+    dietary?: string;
+    allergies?: string;
+    message?: string;
+  }
 ) => {
   return fetchAPI(`/api/events/${eventId}/guests/${personalCode}/rsvp`, {
     method: 'POST',
-    body: JSON.stringify({ responses: rsvps }),
+    body: JSON.stringify(data),
   });
 };
 

@@ -19,6 +19,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { identifyGuest } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 const STORAGE_KEY = 'guest_personal_code';
@@ -92,20 +93,14 @@ const GuestIdentificationScreen: React.FC<GuestIdentificationScreenProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/events/demo/guests/identify`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            email: email.trim() || undefined,
-          }),
-        }
-      );
-
-      const data = await response.json();
+      // Récupérer l'ID de l'événement depuis le storage ou config
+      const eventId = await AsyncStorage.getItem('event_id') || 'demo';
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      
+      const data = await identifyGuest(eventId, {
+        name: fullName,
+        email: email.trim() || undefined,
+      }) as any;
 
       if (!data.found) {
         if (data.multiple_matches) {
@@ -117,7 +112,7 @@ const GuestIdentificationScreen: React.FC<GuestIdentificationScreenProps> = ({
       } else {
         await AsyncStorage.setItem(STORAGE_KEY, data.personal_code);
         await AsyncStorage.setItem('guest_first_name', firstName);
-        onIdentified?.(data.personal_code, `${firstName} ${lastName}`);
+        onIdentified?.(data.personal_code, fullName);
         onIdentificationComplete?.();
       }
     } catch (err) {
