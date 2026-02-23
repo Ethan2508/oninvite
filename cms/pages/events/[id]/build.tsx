@@ -25,7 +25,8 @@ import {
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import Layout from '../../../components/Layout';
-import { FiPackage, FiApple, FiSmartphone, FiExternalLink, FiCheck, FiClock, FiAlertCircle } from 'react-icons/fi';
+import { FiPackage, FiSmartphone, FiExternalLink, FiCheck, FiClock, FiAlertCircle } from 'react-icons/fi';
+import { SiApple } from 'react-icons/si';
 
 // Données de démo
 const mockBuildHistory = [
@@ -84,7 +85,7 @@ export default function BuildPage() {
         <Card>
           <CardHeader>
             <HStack>
-              <Icon as={FiApple} boxSize={6} />
+              <Icon as={SiApple} boxSize={6} />
               <Heading size="md">iOS (App Store)</Heading>
             </HStack>
           </CardHeader>
@@ -225,7 +226,7 @@ export default function BuildPage() {
                     <Flex justify="space-between" align="center">
                       <HStack>
                         <Icon
-                          as={build.platform === 'ios' ? FiApple : FiSmartphone}
+                          as={build.platform === 'ios' ? SiApple : FiSmartphone}
                           boxSize={5}
                         />
                         <Box>
