@@ -108,7 +108,7 @@ const mockGroups = [
 ];
 
 interface Group {
-  id?: string;
+  id: string;
   name: string;
   description: string;
   color: string;
@@ -117,6 +117,7 @@ interface Group {
 }
 
 const emptyGroup: Group = {
+  id: '',
   name: '',
   description: '',
   color: '#22C55E',

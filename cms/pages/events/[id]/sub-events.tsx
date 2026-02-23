@@ -121,7 +121,7 @@ const mockSubEvents = [
 ];
 
 interface SubEvent {
-  id?: string;
+  id: string;
   slug: string;
   name: string;
   date: string;
@@ -135,6 +135,7 @@ interface SubEvent {
 }
 
 const emptySubEvent: SubEvent = {
+  id: '',
   slug: '',
   name: '',
   date: '',
