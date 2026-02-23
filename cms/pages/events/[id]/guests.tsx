@@ -98,6 +98,8 @@ export default function GuestsPage() {
   const [stats, setStats] = useState<RSVPStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
   const [generatingCodes, setGeneratingCodes] = useState(false);
 
   // Charger les données depuis l'API
@@ -203,6 +205,94 @@ export default function GuestsPage() {
       status: 'info',
       duration: 3000,
     });
+  };
+
+  const parseCSV = (text: string): Array<Record<string, string>> => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const rows: Array<Record<string, string>> = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      const row: Record<string, string> = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      rows.push(row);
+    }
+    
+    return rows;
+  };
+
+  const handleImportCSV = async () => {
+    if (!csvFile || !eventId) return;
+    
+    try {
+      setImporting(true);
+      
+      // Lire le fichier CSV
+      const text = await csvFile.text();
+      const rows = parseCSV(text);
+      
+      if (rows.length === 0) {
+        toast({
+          title: 'Fichier vide',
+          description: 'Le fichier CSV ne contient pas de données.',
+          status: 'error',
+          duration: 5000,
+        });
+        return;
+      }
+      
+      // Transformer en format attendu par l'API
+      const guestsToImport = rows.map(row => ({
+        name: row['nom'] || row['name'] || '',
+        first_name: row['prenom'] || row['prénom'] || row['first_name'] || '',
+        email: row['email'] || row['mail'] || '',
+        phone: row['telephone'] || row['téléphone'] || row['phone'] || row['tel'] || '',
+        group_name: row['groupe'] || row['group'] || '',
+        notes: row['notes'] || row['commentaire'] || '',
+      })).filter(g => g.name);
+      
+      // Appeler l'API d'import
+      const response = await fetch(`/api/events/${eventId}/guests/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guests: guestsToImport }),
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: `${result.created} invités importés`,
+          description: result.errors.length > 0 
+            ? `${result.errors.length} erreurs rencontrées`
+            : 'Import réussi !',
+          status: result.errors.length > 0 ? 'warning' : 'success',
+          duration: 5000,
+        });
+        
+        // Rafraîchir la liste
+        const updatedGuests = await getGuests(eventId);
+        setGuests(updatedGuests);
+        onImportClose();
+        setCsvFile(null);
+      } else {
+        throw new Error(result.error || 'Erreur lors de l\'import');
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Erreur d\'import',
+        description: err.message,
+        status: 'error',
+        duration: 5000,
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleCopyCode = (code: string) => {
@@ -538,7 +628,17 @@ Martin,Paul,paul@mail.com,,Soirée uniquement,Collègues`}
 
               <FormControl>
                 <FormLabel>Fichier CSV</FormLabel>
-                <Input type="file" accept=".csv" pt={1} />
+                <Input 
+                  type="file" 
+                  accept=".csv" 
+                  pt={1} 
+                  onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                />
+                {csvFile && (
+                  <Text fontSize="sm" color="green.600" mt={1}>
+                    ✓ {csvFile.name} sélectionné
+                  </Text>
+                )}
               </FormControl>
 
               <Box bg="blue.50" p={3} borderRadius="md" fontSize="sm">
@@ -549,10 +649,17 @@ Martin,Paul,paul@mail.com,,Soirée uniquement,Collègues`}
             </VStack>
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onImportClose}>
+            <Button variant="ghost" mr={3} onClick={onImportClose} isDisabled={importing}>
               Annuler
             </Button>
-            <Button colorScheme="purple" leftIcon={<FiUpload />}>
+            <Button 
+              colorScheme="purple" 
+              leftIcon={<FiUpload />}
+              onClick={handleImportCSV}
+              isLoading={importing}
+              loadingText="Import en cours..."
+              isDisabled={!csvFile}
+            >
               Importer
             </Button>
           </ModalFooter>
