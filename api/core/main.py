@@ -1,6 +1,7 @@
 """
 SaveTheDate API - Point d'entrée principal
 """
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,12 +11,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configuration CORS
+# Configuration CORS - utilise la variable d'environnement ou autorise tout en dev
+cors_origins = os.getenv("CORS_ORIGINS", "*")
+if cors_origins == "*":
+    allowed_origins = ["*"]
+else:
+    allowed_origins = [origin.strip() for origin in cors_origins.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En prod, restreindre aux domaines autorisés
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["*"],
 )
 
