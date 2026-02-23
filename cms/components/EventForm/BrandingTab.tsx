@@ -15,6 +15,7 @@ import {
   Image,
 } from '@chakra-ui/react';
 import { FiUpload } from 'react-icons/fi';
+import ImageUpload from '../ImageUpload';
 
 interface BrandingTabProps {
   data: any;
@@ -172,53 +173,55 @@ export default function BrandingTab({ data, onChange }: BrandingTabProps) {
       <Box>
         <Text fontWeight="semibold" mb={4}>Images</Text>
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-          <FormControl>
-            <FormLabel>Logo</FormLabel>
-            <Input
-              value={data.branding?.logo_url || ''}
-              onChange={(e) => handleBrandingChange('logo_url', e.target.value)}
-              placeholder="URL du logo"
-            />
-          </FormControl>
+          <ImageUpload
+            label="Logo"
+            value={data.branding?.logo_url || ''}
+            onChange={(url) => handleBrandingChange('logo_url', url)}
+            folder="logos"
+            eventId={data.id}
+            previewHeight="100px"
+          />
 
-          <FormControl>
-            <FormLabel>Icône</FormLabel>
-            <Input
-              value={data.branding?.icon_url || ''}
-              onChange={(e) => handleBrandingChange('icon_url', e.target.value)}
-              placeholder="URL de l'icône"
-            />
-          </FormControl>
+          <ImageUpload
+            label="Icône (1024x1024)"
+            value={data.branding?.icon_url || ''}
+            onChange={(url) => handleBrandingChange('icon_url', url)}
+            folder="icons"
+            eventId={data.id}
+            previewHeight="100px"
+          />
 
-          <FormControl>
-            <FormLabel>Splash screen</FormLabel>
-            <Input
-              value={data.branding?.splash_url || ''}
-              onChange={(e) => handleBrandingChange('splash_url', e.target.value)}
-              placeholder="URL du splash screen"
-            />
-          </FormControl>
+          <ImageUpload
+            label="Splash screen"
+            value={data.branding?.splash_url || ''}
+            onChange={(url) => handleBrandingChange('splash_url', url)}
+            folder="splash"
+            eventId={data.id}
+            previewHeight="140px"
+          />
 
-          <FormControl>
-            <FormLabel>Image de fond</FormLabel>
-            <Input
-              value={data.branding?.background_image_url || ''}
-              onChange={(e) => handleBrandingChange('background_image_url', e.target.value)}
-              placeholder="URL de l'image de fond"
-            />
-          </FormControl>
+          <ImageUpload
+            label="Image de fond"
+            value={data.branding?.background_image_url || ''}
+            onChange={(url) => handleBrandingChange('background_image_url', url)}
+            folder="backgrounds"
+            eventId={data.id}
+            previewHeight="140px"
+          />
         </SimpleGrid>
       </Box>
 
       {/* Vidéo d'intro */}
-      <FormControl>
-        <FormLabel>Vidéo d'introduction (optionnel)</FormLabel>
-        <Input
-          value={data.branding?.video_intro_url || ''}
-          onChange={(e) => handleBrandingChange('video_intro_url', e.target.value)}
-          placeholder="URL de la vidéo"
-        />
-      </FormControl>
+      <ImageUpload
+        label="Vidéo d'introduction (optionnel)"
+        value={data.branding?.video_intro_url || ''}
+        onChange={(url) => handleBrandingChange('video_intro_url', url)}
+        accept="video/*"
+        folder="videos"
+        eventId={data.id}
+        assetType="video"
+        previewHeight="160px"
+      />
     </VStack>
   );
 }

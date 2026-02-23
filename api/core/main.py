@@ -90,6 +90,7 @@ from notifications.routes import router as notifications_router
 from playlist.routes import router as playlist_router
 from sub_events.routes import router as sub_events_router
 from groups.routes import router as groups_router
+from uploads.routes import router as uploads_router
 
 
 # Créer les tables au démarrage
@@ -126,3 +127,4 @@ app.include_router(notifications_router, prefix="/api/events", tags=["notificati
 app.include_router(playlist_router, prefix="/api/events", tags=["playlist"])
 app.include_router(sub_events_router, prefix="/api/events", tags=["sub-events"])
 app.include_router(groups_router, prefix="/api/events", tags=["invitation-groups"])
+app.include_router(uploads_router, prefix="/api", tags=["uploads"])
