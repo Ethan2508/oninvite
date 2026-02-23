@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Oninvite",
+    "slug": "oninvite",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#D4AF37"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.oninvite.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "oninvite.android",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:8000",
+      "eventId": "demo-mariage-test",
+      "eas": {
+        "projectId": "5d4be8f1-2208-4b5d-9f21-0dc75146bd93"
+      }
+    }
+  }
+}

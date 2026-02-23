@@ -1,0 +1,232 @@
+{
+  "event": {
+    "id": "demo-mariage-001",
+    "slug": "sarah-david-2024",
+    "type": "wedding",
+    "title": "Mariage de Sarah & David",
+    "subtitle": "Nous avons l'honneur de vous inviter",
+    "date": "2024-09-15T14:00:00Z",
+    "end_date": "2024-09-16T02:00:00Z",
+    "timezone": "Europe/Paris",
+    "locations": [
+      {
+        "id": "ceremony",
+        "name": "Mairie du 16ème",
+        "type": "ceremony",
+        "address": "71 Avenue Henri Martin",
+        "city": "Paris",
+        "postal_code": "75016",
+        "country": "France",
+        "latitude": 48.8656,
+        "longitude": 2.2769,
+        "time": "14:00",
+        "duration": 45,
+        "notes": "Cérémonie civile"
+      },
+      {
+        "id": "reception",
+        "name": "Château de Versailles",
+        "type": "reception",
+        "address": "Place d'Armes",
+        "city": "Versailles",
+        "postal_code": "78000",
+        "country": "France",
+        "latitude": 48.8049,
+        "longitude": 2.1204,
+        "time": "18:00",
+        "duration": 480,
+        "notes": "Cocktail suivi du dîner"
+      }
+    ],
+    "couple": {
+      "person1": {
+        "first_name": "Sarah",
+        "last_name": "Martin",
+        "photo": null
+      },
+      "person2": {
+        "first_name": "David",
+        "last_name": "Bernard",
+        "photo": null
+      }
+    },
+    "contacts": [
+      {
+        "name": "Julie Martin",
+        "role": "Témoin de la mariée",
+        "phone": "+33612345678",
+        "email": "julie@example.com"
+      },
+      {
+        "name": "Thomas Bernard",
+        "role": "Témoin du marié",
+        "phone": "+33687654321",
+        "email": "thomas@example.com"
+      }
+    ],
+    "rsvp_deadline": "2024-08-01T23:59:59Z",
+    "description": "Nous sommes ravis de vous convier à célébrer notre union. Ce jour est d'autant plus spécial que nous le partageons avec vous.",
+    "dress_code": "Tenue de soirée élégante",
+    "hashtag": "#SarahDavid2024"
+  },
+  "branding": {
+    "colors": {
+      "primary": "#8B5CF6",
+      "secondary": "#EC4899",
+      "accent": "#F59E0B",
+      "background": "#FFFFFF",
+      "text": "#1F2937",
+      "text_light": "#FFFFFF"
+    },
+    "fonts": {
+      "heading": "Playfair Display",
+      "body": "Lato"
+    },
+    "logo_url": null,
+    "hero_image_url": null,
+    "theme": "elegant"
+  },
+  "modules": {
+    "home": {
+      "enabled": true,
+      "show_countdown": true,
+      "show_hero": true,
+      "show_quick_info": true
+    },
+    "schedule": {
+      "enabled": true,
+      "items": [
+        {
+          "time": "14:00",
+          "title": "Cérémonie civile",
+          "location": "Mairie du 16ème",
+          "description": "Rendez-vous devant la mairie",
+          "icon": "heart"
+        },
+        {
+          "time": "15:30",
+          "title": "Photos de groupe",
+          "location": "Jardins du Trocadéro",
+          "description": "Photos officielles avec vue sur la Tour Eiffel",
+          "icon": "camera"
+        },
+        {
+          "time": "18:00",
+          "title": "Cocktail",
+          "location": "Château de Versailles",
+          "description": "Champagne et amuse-bouches dans les jardins",
+          "icon": "wine"
+        },
+        {
+          "time": "20:00",
+          "title": "Dîner de réception",
+          "location": "Galerie des Glaces",
+          "description": "Dîner assis et discours",
+          "icon": "utensils"
+        },
+        {
+          "time": "23:00",
+          "title": "Soirée dansante",
+          "location": "Orangerie",
+          "description": "Ouverture du bal par les mariés",
+          "icon": "music"
+        }
+      ]
+    },
+    "rsvp": {
+      "enabled": true,
+      "allow_plus_ones": true,
+      "max_plus_ones": 2,
+      "ask_dietary": true,
+      "ask_allergies": true,
+      "ask_menu_choice": true,
+      "menu_options": [
+        {
+          "id": "classic",
+          "name": "Menu Classique",
+          "description": "Foie gras, Filet de bœuf, Paris-Brest"
+        },
+        {
+          "id": "vegetarian",
+          "name": "Menu Végétarien",
+          "description": "Velouté, Risotto aux légumes, Tarte aux fruits"
+        },
+        {
+          "id": "fish",
+          "name": "Menu Poisson",
+          "description": "Saumon gravlax, Bar en croûte, Fondant chocolat"
+        }
+      ],
+      "custom_questions": [
+        {
+          "id": "transport",
+          "question": "Aurez-vous besoin d'une navette ?",
+          "type": "boolean"
+        },
+        {
+          "id": "song",
+          "question": "Quelle chanson vous ferait danser ?",
+          "type": "text"
+        }
+      ]
+    },
+    "photos": {
+      "enabled": true,
+      "allow_upload": true,
+      "moderation": true,
+      "max_file_size_mb": 10,
+      "allowed_formats": ["jpg", "jpeg", "png", "heic"],
+      "album_name": "Galerie du mariage"
+    },
+    "guestbook": {
+      "enabled": true,
+      "moderation": true,
+      "allow_photos": true
+    },
+    "info": {
+      "enabled": true,
+      "sections": [
+        {
+          "title": "Hébergement",
+          "content": "Des chambres ont été réservées au Trianon Palace Versailles avec tarif préférentiel (code: SARAHDAVID2024).",
+          "icon": "bed"
+        },
+        {
+          "title": "Stationnement",
+          "content": "Parking gratuit disponible sur place. Voiturier disponible à l'entrée.",
+          "icon": "car"
+        },
+        {
+          "title": "Liste de mariage",
+          "content": "Votre présence est notre plus beau cadeau. Si vous souhaitez nous gâter, une liste est disponible chez Printemps.",
+          "icon": "gift"
+        },
+        {
+          "title": "Enfants",
+          "content": "Une salle de jeux avec animatrice sera disponible pour les enfants dès 18h.",
+          "icon": "children"
+        }
+      ]
+    },
+    "notifications": {
+      "enabled": true,
+      "rsvp_confirmation": true,
+      "event_reminders": true,
+      "photo_alerts": true
+    }
+  },
+  "features": {
+    "offline_mode": true,
+    "push_notifications": true,
+    "photo_sharing": true,
+    "live_updates": true,
+    "guestbook": true,
+    "table_plan": false,
+    "music_requests": true
+  },
+  "meta": {
+    "version": "1.0.0",
+    "last_updated": "2024-01-15T10:00:00Z",
+    "api_version": "v1"
+  }
+}
