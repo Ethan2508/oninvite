@@ -22,13 +22,22 @@ interface ConfigProviderProps {
   children: ReactNode;
 }
 
+// Event ID: priorité aux variables d'environnement EAS, puis extra
+const getEventId = (): string => {
+  return (
+    process.env.EXPO_PUBLIC_EVENT_ID ||
+    Constants.expoConfig?.extra?.eventId ||
+    'demo-mariage-test'
+  );
+};
+
 export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
   const [config, setConfig] = useState<EventConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Event ID depuis la config Expo (injecté au build)
-  const eventId = Constants.expoConfig?.extra?.eventId || 'demo-mariage-test';
+  // Event ID depuis l'env ou la config Expo (injecté au build)
+  const eventId = getEventId();
 
   const loadConfig = async () => {
     try {

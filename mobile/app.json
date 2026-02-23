@@ -32,7 +32,7 @@
       "expo-font"
     ],
     "extra": {
-      "apiUrl": "http://localhost:8000",
+      "apiUrl": "https://api.oninvite.fr",
       "eventId": "demo-mariage-test",
       "eas": {
         "projectId": "5d4be8f1-2208-4b5d-9f21-0dc75146bd93"

@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { ConfigProvider, ThemeProvider, useConfig } from './src/context';
+import { ConfigProvider, ThemeProvider, GuestProvider, useConfig } from './src/context';
 import { AppNavigator } from './src/navigation';
 import { Loading } from './src/components';
 
@@ -27,8 +27,10 @@ const AppContent: React.FC = () => {
 
   return (
     <ThemeProvider config={config}>
-      <StatusBar style="auto" />
-      <AppNavigator />
+      <GuestProvider>
+        <StatusBar style="auto" />
+        <AppNavigator />
+      </GuestProvider>
     </ThemeProvider>
   );
 };

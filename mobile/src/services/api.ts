@@ -8,15 +8,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Config de démo locale (fallback si API non disponible)
 import demoConfig from '../config/demo-event.json';
 
-const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+// API URL: priorité aux variables d'environnement EAS, puis extra, puis fallback
+const API_URL = 
+  process.env.EXPO_PUBLIC_API_URL ||
+  Constants.expoConfig?.extra?.apiUrl || 
+  'https://api.oninvite.fr';
 
-// Mode démo activé si pas d'API configurée ou en développement
-const isDemoMode = Constants.expoConfig?.extra?.demoMode || __DEV__;
+// Mode démo activé uniquement si explicitement demandé
+const isDemoMode = Constants.expoConfig?.extra?.demoMode === true;
 
 // Cache keys
 const CACHE_KEYS = {
   CONFIG: 'event_config',
   CONFIG_TIMESTAMP: 'event_config_timestamp',
+  PERSONAL_CODE: 'personal_code',
+  GUEST_NAME: 'guest_name',
 };
 
 // Durée du cache (1 heure)
@@ -229,6 +235,89 @@ export const searchSeating = async (eventId: string, name: string) => {
   return fetchAPI(`/api/events/${eventId}/seating?${params}`);
 };
 
+// ============================================================================
+// IDENTIFICATION INVITÉ & PROGRAMME PERSONNALISÉ
+// ============================================================================
+
+/**
+ * Identifier un invité par son nom ou code personnel
+ */
+export const identifyGuest = async (eventId: string, query: string) => {
+  return fetchAPI(`/api/events/${eventId}/guests/identify`, {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  });
+};
+
+/**
+ * Récupérer un invité par son code personnel
+ */
+export const getGuestByCode = async (eventId: string, personalCode: string) => {
+  return fetchAPI(`/api/events/${eventId}/guests/code/${personalCode}`);
+};
+
+/**
+ * Récupérer le programme personnalisé d'un invité
+ */
+export const getPersonalizedProgram = async (eventId: string, personalCode: string) => {
+  return fetchAPI(`/api/events/${eventId}/guests/${personalCode}/program`);
+};
+
+/**
+ * Soumettre les RSVP par sous-événement
+ */
+export const submitSubEventRsvp = async (
+  eventId: string, 
+  personalCode: string, 
+  rsvps: Array<{ sub_event_id: string; status: 'confirmed' | 'declined'; attendees_count?: number }>
+) => {
+  return fetchAPI(`/api/events/${eventId}/guests/${personalCode}/rsvp`, {
+    method: 'POST',
+    body: JSON.stringify({ responses: rsvps }),
+  });
+};
+
+// ============================================================================
+// STORAGE - Personal Code & Guest Info
+// ============================================================================
+
+/**
+ * Sauvegarder le code personnel de l'invité
+ */
+export const savePersonalCode = async (code: string, guestName: string) => {
+  await AsyncStorage.setItem(CACHE_KEYS.PERSONAL_CODE, code);
+  await AsyncStorage.setItem(CACHE_KEYS.GUEST_NAME, guestName);
+};
+
+/**
+ * Récupérer le code personnel sauvegardé
+ */
+export const getSavedPersonalCode = async (): Promise<{ code: string; name: string } | null> => {
+  const code = await AsyncStorage.getItem(CACHE_KEYS.PERSONAL_CODE);
+  const name = await AsyncStorage.getItem(CACHE_KEYS.GUEST_NAME);
+  
+  if (code && name) {
+    return { code, name };
+  }
+  return null;
+};
+
+/**
+ * Effacer les données d'identification (logout)
+ */
+export const clearGuestData = async () => {
+  await AsyncStorage.removeItem(CACHE_KEYS.PERSONAL_CODE);
+  await AsyncStorage.removeItem(CACHE_KEYS.GUEST_NAME);
+};
+
+/**
+ * Vérifier si l'invité est déjà identifié
+ */
+export const isGuestIdentified = async (): Promise<boolean> => {
+  const code = await AsyncStorage.getItem(CACHE_KEYS.PERSONAL_CODE);
+  return !!code;
+};
+
 export default {
   getEventConfig,
   submitRSVP,
@@ -241,4 +330,14 @@ export default {
   suggestSong,
   getPlaylistSuggestions,
   searchSeating,
+  // Identification
+  identifyGuest,
+  getGuestByCode,
+  getPersonalizedProgram,
+  submitSubEventRsvp,
+  // Storage
+  savePersonalCode,
+  getSavedPersonalCode,
+  clearGuestData,
+  isGuestIdentified,
 };
