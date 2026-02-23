@@ -47,9 +47,13 @@ async def health_check():
 async def debug_check():
     """Debug endpoint - vérifie tous les composants"""
     import os
-    from core.database import _get_database_url
+    from sqlalchemy import create_engine, text
     
-    db_url = _get_database_url()
+    # Récupérer l'URL de la BDD
+    db_url = os.environ.get("DATABASE_URL", "NOT_SET")
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    
     # Masquer le mot de passe
     masked_url = db_url.split("@")[1] if "@" in db_url else "NOT_SET"
     
@@ -65,9 +69,7 @@ async def debug_check():
     
     # Test DB connection
     try:
-        from core.database import _get_engine
-        from sqlalchemy import text
-        engine = _get_engine()
+        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         result["database_connection"] = "OK"
@@ -94,11 +96,18 @@ from groups.routes import router as groups_router
 @app.on_event("startup")
 async def create_tables():
     """Crée les tables si elles n'existent pas"""
+    import os
+    from sqlalchemy import create_engine
     print("🚀 Starting SaveTheDate API...")
     try:
-        from core.database import Base, _get_engine
+        from core.database import Base
         import core.models  # Import pour enregistrer les modèles
-        engine = _get_engine()
+        
+        db_url = os.environ.get("DATABASE_URL", "postgresql://eventapp:devpassword@localhost:5432/eventapp")
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        
+        engine = create_engine(db_url)
         Base.metadata.create_all(bind=engine)
         print("✅ Database tables created/verified")
     except Exception as e:
