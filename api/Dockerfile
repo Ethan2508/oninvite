@@ -20,5 +20,5 @@ COPY . .
 # Exposer le port
 EXPOSE 8000
 
-# Commande par défaut
-CMD ["uvicorn", "core.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Commande par défaut - Railway injecte PORT comme env var
+CMD uvicorn core.main:app --host 0.0.0.0 --port ${PORT:-8000}
