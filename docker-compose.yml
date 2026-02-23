@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:15
+    container_name: savethedate_db
+    environment:
+      POSTGRES_DB: eventapp
+      POSTGRES_USER: eventapp
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./api/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventapp -d eventapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./api
+    container_name: savethedate_api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://eventapp:devpassword@db:5432/eventapp
+      FIREBASE_CREDENTIALS: /app/firebase-credentials.json
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_xxx}
+      CLOUDINARY_URL: ${CLOUDINARY_URL:-cloudinary://xxx}
+      DEBUG: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+    command: uvicorn core.main:app --host 0.0.0.0 --port 8000 --reload
+
+  cms:
+    build: ./cms
+    container_name: savethedate_cms
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_URL: http://api:8000
+    depends_on:
+      - api
+    volumes:
+      - ./cms:/app
+      - /app/node_modules
+      - /app/.next
+
+  scheduler:
+    build: ./api
+    container_name: savethedate_scheduler
+    environment:
+      DATABASE_URL: postgresql://eventapp:devpassword@db:5432/eventapp
+      FIREBASE_CREDENTIALS: /app/firebase-credentials.json
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+    command: python -m scripts.run_jobs
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -1,0 +1,69 @@
+# Dépendances
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Environnement
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Builds
+app/ios/build/
+app/android/build/
+app/android/.gradle/
+*.ipa
+*.aab
+*.apk
+.next/
+out/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Clients data (contient des données personnelles)
+clients/*/assets/photos/
+clients/*/assets/*.jpg
+clients/*/assets/*.jpeg
+
+# Secrets
+firebase-credentials.json
+*.pem
+*.p8
+*.p12
+*.mobileprovision
+.env.secrets
+google-play-service-account.json
+*.keystore
+
+# Firebase config (contient des clés API)
+GoogleService-Info.plist
+google-services.json
+*.key
+
+# Tests
+coverage/
+.pytest_cache/
+htmlcov/
+
+# Docker
+*.log

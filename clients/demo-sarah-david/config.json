@@ -1,0 +1,88 @@
+{
+  "event_id": "demo-123456",
+  "title": "Sarah & David",
+  "event_type": "wedding",
+  "event_date": "2026-06-15T14:00:00Z",
+  "api_url": "https://api.savethedate.app",
+  
+  "branding": {
+    "app_name": "Sarah & David",
+    "primary_color": "#D4AF37",
+    "secondary_color": "#1a1a2e",
+    "font_family": "Playfair Display",
+    "logo_url": "assets/logo.png"
+  },
+  
+  "locations": [
+    {
+      "id": "ceremony",
+      "name": "Cérémonie",
+      "address": "Église Saint-Pierre, 123 Rue de la Mairie, 75001 Paris",
+      "time": "14:00",
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "description": "Cérémonie religieuse"
+    },
+    {
+      "id": "reception",
+      "name": "Réception",
+      "address": "Château de Versailles, 78000 Versailles",
+      "time": "18:00",
+      "latitude": 48.8049,
+      "longitude": 2.1204,
+      "description": "Cocktail et dîner"
+    }
+  ],
+  
+  "program": [
+    {
+      "time": "14:00",
+      "title": "Cérémonie",
+      "description": "Arrivée des invités à l'église",
+      "icon": "church"
+    },
+    {
+      "time": "15:30",
+      "title": "Vin d'honneur",
+      "description": "Cocktail dans les jardins",
+      "icon": "wine"
+    },
+    {
+      "time": "19:00",
+      "title": "Dîner",
+      "description": "Repas de mariage",
+      "icon": "dinner"
+    },
+    {
+      "time": "23:00",
+      "title": "Soirée dansante",
+      "description": "Ouverture du bal",
+      "icon": "music"
+    }
+  ],
+  
+  "modules": {
+    "rsvp": true,
+    "gallery": true,
+    "guestbook": true,
+    "donations": true,
+    "playlist": true,
+    "notifications": true
+  },
+  
+  "contacts": [
+    {
+      "name": "Sarah",
+      "phone": "+33612345678",
+      "role": "Mariée"
+    },
+    {
+      "name": "David",
+      "phone": "+33698765432",
+      "role": "Marié"
+    }
+  ],
+  
+  "store_url_ios": "",
+  "store_url_android": ""
+}
