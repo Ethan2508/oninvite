@@ -63,8 +63,8 @@ const initialEventData = {
   program: [],
   modules: {},
   contacts: {
-    organizer: {},
-    emergency: {},
+    organizer: { name: '', email: '', phone: '' },
+    emergency: { name: '', phone: '' },
   },
   settings: {},
   status: 'draft',
