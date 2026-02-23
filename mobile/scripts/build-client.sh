@@ -47,7 +47,7 @@ cat > app.json.tmp << EOF
 {
   "expo": {
     "name": "$APP_NAME",
-    "slug": "savethedate-$EVENT_SLUG",
+    "slug": "oninvite-$EVENT_SLUG",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
@@ -60,14 +60,14 @@ cat > app.json.tmp << EOF
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.savethedate.$EVENT_SLUG"
+      "bundleIdentifier": "fr.oninvite.$EVENT_SLUG"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "$PRIMARY_COLOR"
       },
-      "package": "com.savethedate.$(echo $EVENT_SLUG | tr '-' '_')"
+      "package": "fr.oninvite.$(echo $EVENT_SLUG | tr '-' '_')"
     },
     "web": {
       "favicon": "./src/assets/images/favicon.png"

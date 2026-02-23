@@ -149,7 +149,7 @@ export default function Sidebar() {
             color={logoTextColor}
             letterSpacing="-0.5px"
           >
-            SaveTheDate
+            Oninvite
           </Text>
           <Text fontSize="xs" color="gray.500" fontWeight="500">
             Administration
@@ -208,7 +208,7 @@ export default function Sidebar() {
               Admin
             </Text>
             <Text fontSize="xs" color="gray.500">
-              admin@savethedate.app
+              admin@oninvite.fr
             </Text>
           </Box>
           <Icon 

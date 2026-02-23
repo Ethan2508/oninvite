@@ -79,17 +79,71 @@ export default function NewEventPage() {
   const [tabIndex, setTabIndex] = useState(0);
 
   const handleSave = async () => {
+    // Validation basique
+    if (!eventData.event.title) {
+      toast({
+        title: 'Erreur',
+        description: 'Le titre est obligatoire.',
+        status: 'error',
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (!eventData.event.date) {
+      toast({
+        title: 'Erreur',
+        description: 'La date est obligatoire.',
+        status: 'error',
+        duration: 3000,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // TODO: Appel API pour créer l'événement
-      // const response = await fetch('/api/events', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(eventData),
-      // });
-      
-      // Simulation
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Générer un slug à partir du titre
+      const slug = eventData.branding.app_name 
+        ? eventData.branding.app_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+        : eventData.event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+      // Préparer les données pour l'API
+      const apiData = {
+        slug: slug,
+        type: eventData.event.type,
+        title: eventData.event.title,
+        subtitle: eventData.event.subtitle || null,
+        event_date: new Date(eventData.event.date).toISOString(),
+        end_date: eventData.event.end_date ? new Date(eventData.event.end_date).toISOString() : null,
+        timezone: eventData.event.timezone,
+        languages: eventData.event.language,
+        default_language: eventData.event.default_language,
+        pack: eventData.pack,
+        config: {
+          branding: eventData.branding,
+          locations: eventData.locations,
+          program: eventData.program,
+          modules: eventData.modules,
+          contacts: eventData.contacts,
+          settings: eventData.settings,
+        },
+        client_name: eventData.contacts?.organizer?.name || null,
+        client_email: eventData.contacts?.organizer?.email || null,
+        client_phone: eventData.contacts?.organizer?.phone || null,
+      };
+
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || error.error || 'Erreur lors de la création');
+      }
+
+      const created = await response.json();
 
       toast({
         title: 'Événement créé',
@@ -98,13 +152,13 @@ export default function NewEventPage() {
         duration: 3000,
       });
 
-      router.push('/events');
-    } catch (error) {
+      router.push(`/events/${created.id}`);
+    } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: 'Une erreur est survenue lors de la création.',
+        description: error.message || 'Une erreur est survenue lors de la création.',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
       });
     } finally {
       setIsSubmitting(false);

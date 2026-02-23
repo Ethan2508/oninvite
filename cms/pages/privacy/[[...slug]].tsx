@@ -33,7 +33,7 @@ const PrivacyPage = ({
   const cardBg = useColorModeValue('white', 'gray.800');
   const title = eventName 
     ? `Politique de Confidentialité — ${eventName}`
-    : 'Politique de Confidentialité — SaveTheDate';
+    : 'Politique de Confidentialité — Oninvite';
 
   return (
     <>
@@ -178,9 +178,9 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
   
   // Valeurs par défaut (à personnaliser)
   const defaultProps: PrivacyPageProps = {
-    companyName: 'SaveTheDate SAS',
+    companyName: 'Oninvite SAS',
     companyAddress: 'Paris, France',
-    contactEmail: 'privacy@savethedate.app',
+    contactEmail: 'privacy@oninvite.fr',
     lastUpdated: new Date().toLocaleDateString('fr-FR'),
   };
 

@@ -266,7 +266,7 @@ const HomeScreen: React.FC = () => {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Made with <Ionicons name="heart" size={12} color={COLORS.primary} /> by SaveTheDate
+            Made with <Ionicons name="heart" size={12} color={COLORS.primary} /> by Oninvite
           </Text>
         </View>
       </ScrollView>

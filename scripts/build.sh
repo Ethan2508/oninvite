@@ -46,13 +46,13 @@ fi
 # Lire les variables depuis config.json
 APP_NAME=$(jq -r '.branding.app_name // .title' "$CONFIG_FILE")
 EVENT_ID=$(jq -r '.event_id' "$CONFIG_FILE")
-API_URL=$(jq -r '.api_url // "https://api.savethedate.app"' "$CONFIG_FILE")
+API_URL=$(jq -r '.api_url // "https://api.oninvite.fr"' "$CONFIG_FILE")
 BUNDLE_ID_BASE=$(echo "$CLIENT_SLUG" | tr '-' '' | tr '_' '')
-BUNDLE_ID_IOS="com.savethedate.event.${BUNDLE_ID_BASE}"
-BUNDLE_ID_ANDROID="com.savethedate.event.${BUNDLE_ID_BASE}"
+BUNDLE_ID_IOS="fr.oninvite.${BUNDLE_ID_BASE}"
+BUNDLE_ID_ANDROID="fr.oninvite.${BUNDLE_ID_BASE}"
 
-echo "═══════════════════════════════════════════════════════════════"
-echo "🔨 SaveTheDate Build Script"
+echo "═════════════════════════════════════════════════════════════════"
+echo "🔨 Oninvite Build Script"
 echo "═══════════════════════════════════════════════════════════════"
 echo "📱 App Name: $APP_NAME"
 echo "🆔 Event ID: $EVENT_ID"

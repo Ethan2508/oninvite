@@ -183,7 +183,7 @@ export default function SettingsTab({ data, onChange }: SettingsTabProps) {
             <FormControl>
               <HStack justify="space-between">
                 <Box>
-                  <FormLabel mb={0}>Afficher "Propulsé par SaveTheDate"</FormLabel>
+                  <FormLabel mb={0}>Afficher "Propulsé par Oninvite"</FormLabel>
                   <Text fontSize="sm" color="gray.600">
                     Badge discret dans le footer de l'app
                   </Text>

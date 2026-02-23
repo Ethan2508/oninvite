@@ -512,7 +512,7 @@ class GuestImportResult(BaseModel):
 class QRCodeExportRequest(BaseModel):
     """Demande d'export QR codes"""
     guest_ids: Optional[List[UUID]] = None  # null = tous les invités
-    base_url: str = "https://app.savethedate.com"
+    base_url: str = "https://oninvite.fr"
 
 
 # ============================================

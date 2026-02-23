@@ -166,7 +166,7 @@ const DownloadPage = ({ event, error }: DownloadPageProps) => {
             <Box pt={6} borderTop="1px" borderColor="gray.200" w="full">
               <HStack justify="center" spacing={1} color="gray.400" fontSize="sm">
                 <Text>Propulsé par</Text>
-                <Text fontWeight="bold" color={primaryColor}>SaveTheDate</Text>
+                <Text fontWeight="bold" color={primaryColor}>Oninvite</Text>
               </HStack>
             </Box>
           </VStack>

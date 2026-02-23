@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
-    title="SaveTheDate API",
+    title="Oninvite API",
     description="API pour l'application événementielle white-label",
     version="1.0.0"
 )
@@ -32,7 +32,7 @@ async def root():
     """Health check endpoint"""
     return {
         "status": "ok",
-        "service": "SaveTheDate API",
+        "service": "Oninvite API",
         "version": "1.0.0"
     }
 
@@ -99,7 +99,7 @@ async def create_tables():
     """Crée les tables si elles n'existent pas"""
     import os
     from sqlalchemy import create_engine
-    print("🚀 Starting SaveTheDate API...")
+    print("🚀 Starting Oninvite API...")
     try:
         from core.database import Base
         import core.models  # Import pour enregistrer les modèles
