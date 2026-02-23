@@ -26,45 +26,27 @@ import {
   MenuList,
   MenuItem,
   IconButton,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import { FiSearch, FiMoreVertical, FiEdit, FiEye, FiTrash2, FiCopy } from 'react-icons/fi';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// Données de démo
-const mockEvents = [
-  {
-    id: '1',
-    title: 'Sarah & David',
-    type: 'wedding',
-    date: '2026-06-15',
-    status: 'live',
-    pack: 'premium',
-    rsvps: 142,
-    createdAt: '2026-01-10',
-  },
-  {
-    id: '2',
-    title: 'Nathan - Bar Mitzvah',
-    type: 'bar_mitzvah',
-    date: '2026-07-20',
-    status: 'pending_review',
-    pack: 'essential',
-    rsvps: 0,
-    createdAt: '2026-02-05',
-  },
-  {
-    id: '3',
-    title: 'Emma & Thomas',
-    type: 'wedding',
-    date: '2026-09-05',
-    status: 'draft',
-    pack: 'vip',
-    rsvps: 0,
-    createdAt: '2026-02-15',
-  },
-];
+interface Event {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string;
+  type: string;
+  status: string;
+  pack?: string;
+  mainDate?: string;
+  createdAt: string;
+  guestCount?: number;
+}
 
 const statusColors: Record<string, string> = {
   draft: 'gray',
@@ -91,21 +73,61 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function EventsListPage() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const filteredEvents = mockEvents.filter((event) => {
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch('/api/events');
+        if (!res.ok) throw new Error('Erreur lors du chargement des événements');
+        const data = await res.json();
+        setEvents(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEvents();
+  }, []);
+
+  const filteredEvents = events.filter((event) => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  if (loading) {
+    return (
+      <Layout>
+        <Flex justify="center" align="center" minH="400px">
+          <Spinner size="xl" color="brand.500" />
+        </Flex>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <Alert status="error" borderRadius="lg">
+          <AlertIcon />
+          {error}
+        </Alert>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <Flex justify="space-between" align="center" mb={8}>
         <Box>
           <Heading size="lg">Événements</Heading>
-          <Text color="gray.600">{mockEvents.length} événements au total</Text>
+          <Text color="gray.600">{events.length} événement{events.length > 1 ? 's' : ''} au total</Text>
         </Box>
         <Link href="/events/new">
           <Button colorScheme="blue">+ Nouvel événement</Button>
@@ -158,7 +180,14 @@ export default function EventsListPage() {
               </Tr>
             </Thead>
             <Tbody>
-              {filteredEvents.map((event) => (
+              {filteredEvents.length === 0 ? (
+                <Tr>
+                  <Td colSpan={7} textAlign="center" py={8}>
+                    <Text color="gray.500">Aucun événement trouvé</Text>
+                  </Td>
+                </Tr>
+              ) : (
+                filteredEvents.map((event) => (
                 <Tr key={event.id} _hover={{ bg: 'gray.50' }}>
                   <Td>
                     <Link href={`/events/${event.id}`}>
@@ -168,15 +197,15 @@ export default function EventsListPage() {
                     </Link>
                   </Td>
                   <Td>{typeLabels[event.type] || event.type}</Td>
-                  <Td>{new Date(event.date).toLocaleDateString('fr-FR')}</Td>
+                  <Td>{event.mainDate ? new Date(event.mainDate).toLocaleDateString('fr-FR') : '-'}</Td>
                   <Td>
-                    <Badge colorScheme={statusColors[event.status]}>
+                    <Badge colorScheme={statusColors[event.status] || 'gray'}>
                       {statusLabels[event.status] || event.status}
                     </Badge>
                   </Td>
-                  <Td>{event.rsvps}</Td>
+                  <Td>{event.guestCount ?? 0}</Td>
                   <Td>
-                    <Badge colorScheme="purple">{event.pack}</Badge>
+                    <Badge colorScheme="purple">{event.pack || 'standard'}</Badge>
                   </Td>
                   <Td>
                     <Menu>
@@ -201,7 +230,8 @@ export default function EventsListPage() {
                     </Menu>
                   </Td>
                 </Tr>
-              ))}
+              ))
+              )}
             </Tbody>
           </Table>
         </CardBody>
