@@ -11,8 +11,7 @@ from core.database import get_db
 from core.models import Event, PushNotification
 from core.schemas import (
     NotificationCreate, NotificationResponse, SuccessResponse
-)
-from .firebase_service import send_to_event, is_firebase_available
+)from core.security import verify_admin_api_keyfrom .firebase_service import send_to_event, is_firebase_available
 
 router = APIRouter()
 
@@ -21,7 +20,8 @@ router = APIRouter()
 async def create_notification(
     event_id: UUID,
     notif_data: NotificationCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
     """
     Créer et envoyer une notification (CMS)
@@ -90,9 +90,10 @@ async def list_notifications(
     status: Optional[str] = Query(None, description="Filtrer par statut"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
-    """Liste les notifications d'un événement (CMS)"""
+    """Liste les notifications d'un événement (CMS) - Protégé par API key"""
     # Vérifier que l'événement existe
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
@@ -111,9 +112,10 @@ async def list_notifications(
 async def get_notification(
     event_id: UUID,
     notif_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
-    """Récupère une notification par ID"""
+    """Récupère une notification par ID - Protégé par API key"""
     notification = db.query(PushNotification).filter(
         PushNotification.id == notif_id,
         PushNotification.event_id == event_id
@@ -129,9 +131,10 @@ async def get_notification(
 async def cancel_notification(
     event_id: UUID,
     notif_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
-    """Annule une notification programmée (CMS)"""
+    """Annule une notification programmée (CMS) - Protégé par API key"""
     notification = db.query(PushNotification).filter(
         PushNotification.id == notif_id,
         PushNotification.event_id == event_id
@@ -216,9 +219,10 @@ async def unsubscribe_from_event(
 @router.get("/{event_id}/notifications/stats")
 async def get_notification_stats(
     event_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
-    """Récupère les statistiques des notifications pour un événement (CMS)"""
+    """Récupère les statistiques des notifications pour un événement (CMS) - Protégé par API key"""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")

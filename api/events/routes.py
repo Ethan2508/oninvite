@@ -11,8 +11,7 @@ from core.models import Event
 from core.schemas import (
     EventCreate, EventUpdate, EventResponse, 
     EventConfigResponse, SuccessResponse
-)
-
+)from core.security import verify_admin_api_key
 router = APIRouter()
 
 
@@ -21,9 +20,10 @@ async def list_events(
     status: Optional[str] = Query(None, description="Filtrer par statut"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
-    """Liste tous les événements (pour le CMS)"""
+    """Liste tous les événements (pour le CMS) - Protégé par API key"""
     query = db.query(Event)
     
     if status:
@@ -79,9 +79,10 @@ async def get_event_config_by_slug(
 @router.post("/", response_model=EventResponse, status_code=201)
 async def create_event(
     event_data: EventCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
-    """Crée un nouvel événement (CMS)"""
+    """Crée un nouvel événement (CMS) - Protégé par API key"""
     # Vérifier que le slug n'existe pas déjà
     existing = db.query(Event).filter(Event.slug == event_data.slug).first()
     if existing:
@@ -116,9 +117,10 @@ async def create_event(
 async def update_event(
     event_id: UUID,
     event_data: EventUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
-    """Met à jour un événement (CMS)"""
+    """Met à jour un événement (CMS) - Protégé par API key"""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -137,9 +139,10 @@ async def update_event(
 @router.delete("/{event_id}", response_model=SuccessResponse)
 async def delete_event(
     event_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
-    """Supprime un événement (CMS)"""
+    """Supprime un événement (CMS) - Protégé par API key"""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -168,7 +171,8 @@ class RenewalRequest(BaseModel):
 async def update_event_status(
     event_id: UUID,
     data: StatusUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
     """
     Met à jour le statut d'un événement.
@@ -207,7 +211,8 @@ async def update_event_status(
 async def renew_event(
     event_id: UUID,
     data: RenewalRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
     """
     Renouvelle un événement (prolonge son expiration).
@@ -242,7 +247,8 @@ async def renew_event(
 @router.get("/{event_id}/lifecycle")
 async def get_event_lifecycle(
     event_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _api_key: str = Depends(verify_admin_api_key)
 ):
     """
     Récupère les informations de lifecycle d'un événement.
