@@ -1,7 +1,7 @@
-import NextAuth from 'next-auth';
+import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-export default NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -36,4 +36,6 @@ export default NextAuth({
     maxAge: 24 * 60 * 60, // 24 heures
   },
   secret: process.env.NEXTAUTH_SECRET || 'oninvite-secret-key-2026',
-});
+};
+
+export default NextAuth(authOptions);

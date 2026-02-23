@@ -29,19 +29,6 @@
         "buildType": "app-bundle"
       },
       "autoIncrement": true
-    },
-    "client-sarah-david": {
-      "extends": "production",
-      "env": {
-        "EXPO_PUBLIC_EVENT_ID": "sarah-david-2026",
-        "EXPO_PUBLIC_API_URL": "https://api.oninvite.fr"
-      },
-      "ios": {
-        "bundleIdentifier": "fr.oninvite.event.sarahdavid"
-      },
-      "android": {
-        "package": "fr.oninvite.event.sarahdavid"
-      }
     }
   },
   "submit": {
