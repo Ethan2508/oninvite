@@ -43,6 +43,40 @@ async def health_check():
     return {"status": "healthy"}
 
 
+@app.get("/debug")
+async def debug_check():
+    """Debug endpoint - vérifie tous les composants"""
+    import os
+    from core.database import _get_database_url
+    
+    db_url = _get_database_url()
+    # Masquer le mot de passe
+    masked_url = db_url.split("@")[1] if "@" in db_url else "NOT_SET"
+    
+    result = {
+        "status": "ok",
+        "database_host": masked_url,
+        "env_vars": {
+            "DATABASE_URL": "SET" if os.environ.get("DATABASE_URL") else "NOT_SET",
+            "ADMIN_API_KEY": "SET" if os.environ.get("ADMIN_API_KEY") else "NOT_SET",
+            "PORT": os.environ.get("PORT", "NOT_SET"),
+        }
+    }
+    
+    # Test DB connection
+    try:
+        from core.database import _get_engine
+        from sqlalchemy import text
+        engine = _get_engine()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        result["database_connection"] = "OK"
+    except Exception as e:
+        result["database_connection"] = f"ERROR: {str(e)}"
+    
+    return result
+
+
 # Import des routes
 from events.routes import router as events_router
 from events.seating import router as seating_router
