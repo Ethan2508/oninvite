@@ -1,7 +1,7 @@
 /**
  * Page d'envoi de notifications push
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -33,31 +33,65 @@ import {
   StatLabel,
   StatNumber,
   SimpleGrid,
+  Spinner,
+  Select,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import Layout from '../../../components/Layout';
 import { FiSend, FiBell } from 'react-icons/fi';
-
-// Données de démo
-const mockNotifications = [
-  { id: '1', title: 'Rappel : J-7 !', message: 'Plus que 7 jours avant le grand jour ! Avez-vous confirmé votre présence ?', sentAt: '2026-06-08T10:00:00', sent: 156, opened: 89 },
-  { id: '2', title: 'Programme mis à jour', message: 'Le programme de la soirée a été mis à jour. Consultez-le dans l\'app !', sentAt: '2026-06-10T15:30:00', sent: 142, opened: 67 },
-  { id: '3', title: 'Info parking', message: 'Attention, le parking du château est limité. Pensez au covoiturage !', sentAt: '2026-06-14T09:00:00', sent: 142, opened: 0 },
-];
+import {
+  getNotifications,
+  sendNotification,
+  getInvitationGroups,
+  Notification,
+  InvitationGroup,
+} from '../../../services/api';
 
 export default function NotificationsPage() {
   const router = useRouter();
   const { id } = router.query;
+  const eventId = id as string;
   const toast = useToast();
+  
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [groups, setGroups] = useState<InvitationGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [targetGroupId, setTargetGroupId] = useState('');
   const [scheduled, setScheduled] = useState(false);
   const [scheduledDate, setScheduledDate] = useState('');
   const [isSending, setIsSending] = useState(false);
 
+  // Charger les données depuis l'API
+  useEffect(() => {
+    if (!eventId) return;
+    
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [notificationsData, groupsData] = await Promise.all([
+          getNotifications(eventId),
+          getInvitationGroups(eventId),
+        ]);
+        setNotifications(notificationsData);
+        setGroups(groupsData);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Impossible de charger les données');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [eventId]);
+
   const handleSend = async () => {
-    if (!title || !message) {
+    if (!eventId || !title || !message) {
       toast({
         title: 'Champs requis',
         description: 'Le titre et le message sont obligatoires.',
@@ -69,27 +103,45 @@ export default function NotificationsPage() {
 
     setIsSending(true);
     
-    // Simulation d'envoi
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const newNotification = await sendNotification(eventId, {
+        title,
+        message,
+        target_group_id: targetGroupId || undefined,
+        scheduled_at: scheduled ? scheduledDate : undefined,
+      });
+      
+      setNotifications(prev => [newNotification, ...prev]);
+      
+      toast({
+        title: scheduled ? 'Notification programmée' : 'Notification envoyée',
+        description: scheduled 
+          ? `La notification sera envoyée le ${new Date(scheduledDate).toLocaleDateString('fr-FR')}`
+          : 'La notification a été envoyée à tous les utilisateurs.',
+        status: 'success',
+        duration: 3000,
+      });
 
-    toast({
-      title: scheduled ? 'Notification programmée' : 'Notification envoyée',
-      description: scheduled 
-        ? `La notification sera envoyée le ${new Date(scheduledDate).toLocaleDateString('fr-FR')}`
-        : 'La notification a été envoyée à tous les utilisateurs.',
-      status: 'success',
-      duration: 3000,
-    });
-
-    setTitle('');
-    setMessage('');
-    setScheduled(false);
-    setScheduledDate('');
-    setIsSending(false);
+      setTitle('');
+      setMessage('');
+      setTargetGroupId('');
+      setScheduled(false);
+      setScheduledDate('');
+    } catch (err) {
+      console.error('Error sending notification:', err);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible d\'envoyer la notification',
+        status: 'error',
+        duration: 5000,
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const totalSent = mockNotifications.reduce((sum, n) => sum + n.sent, 0);
-  const totalOpened = mockNotifications.reduce((sum, n) => sum + n.opened, 0);
+  const totalSent = notifications.filter(n => n.status === 'sent').length;
+  const totalOpened = notifications.reduce((sum, n) => sum + n.opened_count, 0);
   const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
 
   return (
@@ -98,28 +150,49 @@ export default function NotificationsPage() {
         <Box>
           <Heading size="lg">Notifications push</Heading>
           <Text color="gray.600">
-            <Link href={`/events/${id}`}>
+            <Link href={`/events/${eventId}`}>
               <Text as="span" color="blue.600" cursor="pointer">← Retour à l'événement</Text>
             </Link>
           </Text>
         </Box>
       </Flex>
 
+      {/* État de chargement */}
+      {loading && (
+        <Card>
+          <CardBody textAlign="center" py={12}>
+            <Spinner size="xl" color="purple.500" mb={4} />
+            <Text color="gray.500">Chargement des notifications...</Text>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* État d'erreur */}
+      {error && !loading && (
+        <Alert status="error" mb={4}>
+          <AlertIcon />
+          {error}
+        </Alert>
+      )}
+
+      {/* Contenu principal */}
+      {!loading && !error && (
+      <>
       {/* Stats */}
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
         <Card>
           <CardBody>
             <Stat>
               <StatLabel>Notifications envoyées</StatLabel>
-              <StatNumber>{mockNotifications.length}</StatNumber>
+              <StatNumber>{notifications.length}</StatNumber>
             </Stat>
           </CardBody>
         </Card>
         <Card>
           <CardBody>
             <Stat>
-              <StatLabel>Total délivrées</StatLabel>
-              <StatNumber>{totalSent}</StatNumber>
+              <StatLabel>Total ouvertes</StatLabel>
+              <StatNumber>{totalOpened}</StatNumber>
             </Stat>
           </CardBody>
         </Card>
@@ -174,6 +247,19 @@ export default function NotificationsPage() {
             </FormControl>
 
             <FormControl>
+              <FormLabel>Groupe cible (optionnel)</FormLabel>
+              <Select
+                value={targetGroupId}
+                onChange={(e) => setTargetGroupId(e.target.value)}
+                placeholder="Tous les utilisateurs"
+              >
+                {groups.map(group => (
+                  <option key={group.id} value={group.id}>{group.name}</option>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl>
               <HStack justify="space-between">
                 <FormLabel mb={0}>Programmer l'envoi</FormLabel>
                 <Switch
@@ -218,42 +304,56 @@ export default function NotificationsPage() {
               <Tr>
                 <Th>Titre</Th>
                 <Th>Message</Th>
+                <Th>Statut</Th>
                 <Th>Envoyée le</Th>
-                <Th>Délivrées</Th>
-                <Th>Ouvertes</Th>
-                <Th>Taux</Th>
+                <Th>Ouvertures</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {mockNotifications.map((notif) => (
-                <Tr key={notif.id}>
-                  <Td fontWeight="medium">{notif.title}</Td>
-                  <Td>
-                    <Text fontSize="sm" color="gray.600" maxW="250px" isTruncated>
-                      {notif.message}
-                    </Text>
-                  </Td>
-                  <Td>
-                    {new Date(notif.sentAt).toLocaleDateString('fr-FR', {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Td>
-                  <Td>{notif.sent}</Td>
-                  <Td>{notif.opened}</Td>
-                  <Td>
-                    <Badge colorScheme={notif.sent > 0 && (notif.opened / notif.sent) > 0.5 ? 'green' : 'gray'}>
-                      {notif.sent > 0 ? Math.round((notif.opened / notif.sent) * 100) : 0}%
-                    </Badge>
+              {notifications.length === 0 ? (
+                <Tr>
+                  <Td colSpan={5} textAlign="center" color="gray.500" py={8}>
+                    Aucune notification envoyée pour le moment.
                   </Td>
                 </Tr>
-              ))}
+              ) : (
+                notifications.map((notif) => (
+                  <Tr key={notif.id}>
+                    <Td fontWeight="medium">{notif.title}</Td>
+                    <Td>
+                      <Text fontSize="sm" color="gray.600" maxW="250px" isTruncated>
+                        {notif.message}
+                      </Text>
+                    </Td>
+                    <Td>
+                      <Badge colorScheme={
+                        notif.status === 'sent' ? 'green' : 
+                        notif.status === 'scheduled' ? 'blue' : 
+                        notif.status === 'failed' ? 'red' : 'gray'
+                      }>
+                        {notif.status === 'sent' ? 'Envoyée' : 
+                         notif.status === 'scheduled' ? 'Programmée' : 
+                         notif.status === 'failed' ? 'Échec' : 'Brouillon'}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      {notif.sent_at ? new Date(notif.sent_at).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }) : '-'}
+                    </Td>
+                    <Td>{notif.opened_count}</Td>
+                  </Tr>
+                ))
+              )}
             </Tbody>
           </Table>
         </CardBody>
       </Card>
+      </>
+      )}
     </Layout>
   );
 }

@@ -1,7 +1,7 @@
 /**
  * Page de gestion des sous-événements du mariage
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -39,9 +39,19 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import Layout from '../../../components/Layout';
+import { 
+  getSubEvents, 
+  createSubEvent, 
+  updateSubEvent, 
+  deleteSubEvent,
+  SubEvent 
+} from '../../../services/api';
 import { 
   FiPlus, 
   FiEdit2, 
@@ -55,160 +65,142 @@ import {
 
 // Templates de sous-événements
 const templates = [
-  { slug: 'mairie', name: 'Cérémonie civile', dressCode: 'Tenue de ville', icon: '🏛️' },
-  { slug: 'henne', name: 'Soirée Henné', dressCode: 'Tenue traditionnelle', icon: '🪬' },
-  { slug: 'houppa', name: 'Cérémonie religieuse & Houppa', dressCode: 'Tenue de soirée', icon: '✡️' },
-  { slug: 'party', name: 'Soirée & Dîner', dressCode: 'Tenue de gala', icon: '🎉' },
-  { slug: 'chabbat', name: 'Chabbat Hatan', dressCode: 'Chic décontracté', icon: '🕯️' },
-  { slug: 'cocktail', name: 'Cocktail', dressCode: 'Tenue de soirée', icon: '🥂' },
-  { slug: 'brunch', name: 'Brunch du lendemain', dressCode: 'Décontracté', icon: '🥐' },
+  { slug: 'mairie', name: 'Cérémonie civile', dress_code: 'Tenue de ville', icon: '🏛️' },
+  { slug: 'henne', name: 'Soirée Henné', dress_code: 'Tenue traditionnelle', icon: '🪬' },
+  { slug: 'houppa', name: 'Cérémonie religieuse & Houppa', dress_code: 'Tenue de soirée', icon: '✡️' },
+  { slug: 'party', name: 'Soirée & Dîner', dress_code: 'Tenue de gala', icon: '🎉' },
+  { slug: 'chabbat', name: 'Chabbat Hatan', dress_code: 'Chic décontracté', icon: '🕯️' },
+  { slug: 'cocktail', name: 'Cocktail', dress_code: 'Tenue de soirée', icon: '🥂' },
+  { slug: 'brunch', name: 'Brunch du lendemain', dress_code: 'Décontracté', icon: '🥐' },
 ];
 
-// Données de démo
-const mockSubEvents = [
-  { 
-    id: '1', 
-    slug: 'mairie', 
-    name: 'Cérémonie civile', 
-    date: '2026-06-14', 
-    startTime: '15:00', 
-    endTime: '16:00',
-    locationName: 'Mairie du 16ème',
-    locationAddress: '71 Avenue Henri Martin, 75016 Paris',
-    dressCode: 'Tenue de ville',
-    notes: '',
-    sortOrder: 0
-  },
-  { 
-    id: '2', 
-    slug: 'henne', 
-    name: 'Soirée Henné', 
-    date: '2026-06-14', 
-    startTime: '20:00', 
-    endTime: '01:00',
-    locationName: 'Salle Or Léa',
-    locationAddress: '12 Rue de la Paix, 75002 Paris',
-    dressCode: 'Tenue traditionnelle',
-    notes: 'Tenue blanche pour les femmes',
-    sortOrder: 1
-  },
-  { 
-    id: '3', 
-    slug: 'houppa', 
-    name: 'Cérémonie religieuse & Houppa', 
-    date: '2026-06-15', 
-    startTime: '17:00', 
-    endTime: '18:30',
-    locationName: 'Synagogue de la Victoire',
-    locationAddress: '44 Rue de la Victoire, 75009 Paris',
-    dressCode: 'Tenue de soirée',
-    notes: 'Kippa fournie sur place',
-    sortOrder: 2
-  },
-  { 
-    id: '4', 
-    slug: 'party', 
-    name: 'Soirée & Dîner', 
-    date: '2026-06-15', 
-    startTime: '20:00', 
-    endTime: '05:00',
-    locationName: 'Pavillon Royal',
-    locationAddress: 'Route de Suresnes, 75016 Paris',
-    dressCode: 'Tenue de gala',
-    notes: 'Cocktail à 20h, dîner à 21h30',
-    sortOrder: 3
-  },
-];
-
-interface SubEvent {
-  id: string;
-  slug: string;
-  name: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  locationName: string;
-  locationAddress: string;
-  dressCode: string;
-  notes: string;
-  sortOrder: number;
-}
-
-const emptySubEvent: SubEvent = {
+const emptySubEvent: Partial<SubEvent> = {
   id: '',
   slug: '',
   name: '',
   date: '',
-  startTime: '',
-  endTime: '',
-  locationName: '',
-  locationAddress: '',
-  dressCode: '',
+  start_time: '',
+  end_time: '',
+  location_name: '',
+  location_address: '',
+  dress_code: '',
   notes: '',
-  sortOrder: 0
+  sort_order: 0
 };
 
 export default function SubEventsPage() {
   const router = useRouter();
   const { id } = router.query;
+  const eventId = id as string;
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   
-  const [subEvents, setSubEvents] = useState(mockSubEvents);
-  const [editingSubEvent, setEditingSubEvent] = useState<SubEvent>(emptySubEvent);
+  const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingSubEvent, setEditingSubEvent] = useState<Partial<SubEvent>>(emptySubEvent);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Charger les sous-événements depuis l'API
+  useEffect(() => {
+    if (!eventId) return;
+    
+    const loadSubEvents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getSubEvents(eventId);
+        setSubEvents(data);
+      } catch (err) {
+        console.error('Error loading sub-events:', err);
+        setError('Impossible de charger les sous-événements');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSubEvents();
+  }, [eventId]);
 
   const handleAddFromTemplate = (template: typeof templates[0]) => {
     setEditingSubEvent({
       ...emptySubEvent,
       slug: template.slug,
       name: template.name,
-      dressCode: template.dressCode,
-      sortOrder: subEvents.length
+      dress_code: template.dress_code,
+      sort_order: subEvents.length
     });
     setIsEditing(false);
     onOpen();
   };
 
-  const handleEdit = (subEvent: typeof mockSubEvents[0]) => {
+  const handleEdit = (subEvent: SubEvent) => {
     setEditingSubEvent(subEvent);
     setIsEditing(true);
     onOpen();
   };
 
-  const handleSave = () => {
-    if (isEditing) {
-      setSubEvents(prev => prev.map(se => 
-        se.id === editingSubEvent.id ? editingSubEvent : se
-      ));
+  const handleSave = async () => {
+    if (!eventId) return;
+    
+    try {
+      setSaving(true);
+      
+      if (isEditing && editingSubEvent.id) {
+        const updated = await updateSubEvent(eventId, editingSubEvent.id, editingSubEvent);
+        setSubEvents(prev => prev.map(se => 
+          se.id === editingSubEvent.id ? updated : se
+        ));
+        toast({
+          title: 'Sous-événement modifié',
+          status: 'success',
+          duration: 3000,
+        });
+      } else {
+        const created = await createSubEvent(eventId, editingSubEvent);
+        setSubEvents(prev => [...prev, created]);
+        toast({
+          title: 'Sous-événement ajouté',
+          status: 'success',
+          duration: 3000,
+        });
+      }
+      onClose();
+      setEditingSubEvent(emptySubEvent);
+    } catch (err) {
+      console.error('Error saving sub-event:', err);
       toast({
-        title: 'Sous-événement modifié',
-        status: 'success',
-        duration: 3000,
+        title: 'Erreur',
+        description: 'Impossible de sauvegarder le sous-événement',
+        status: 'error',
+        duration: 5000,
       });
-    } else {
-      const newSubEvent = {
-        ...editingSubEvent,
-        id: Date.now().toString(),
-      };
-      setSubEvents(prev => [...prev, newSubEvent]);
-      toast({
-        title: 'Sous-événement ajouté',
-        status: 'success',
-        duration: 3000,
-      });
+    } finally {
+      setSaving(false);
     }
-    onClose();
-    setEditingSubEvent(emptySubEvent);
   };
 
-  const handleDelete = (subEventId: string) => {
-    setSubEvents(prev => prev.filter(se => se.id !== subEventId));
-    toast({
-      title: 'Sous-événement supprimé',
-      status: 'info',
-      duration: 3000,
-    });
+  const handleDelete = async (subEventId: string) => {
+    if (!eventId) return;
+    
+    try {
+      await deleteSubEvent(eventId, subEventId);
+      setSubEvents(prev => prev.filter(se => se.id !== subEventId));
+      toast({
+        title: 'Sous-événement supprimé',
+        status: 'info',
+        duration: 3000,
+      });
+    } catch (err) {
+      console.error('Error deleting sub-event:', err);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de supprimer le sous-événement',
+        status: 'error',
+        duration: 5000,
+      });
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -228,13 +220,13 @@ export default function SubEventsPage() {
         <Box>
           <Heading size="lg">Sous-événements du mariage</Heading>
           <Text color="gray.600">
-            <Link href={`/events/${id}`}>
+            <Link href={`/events/${eventId}`}>
               <Text as="span" color="blue.600" cursor="pointer">← Retour à l'événement</Text>
             </Link>
           </Text>
         </Box>
         <Menu>
-          <MenuButton as={Button} leftIcon={<FiPlus />} colorScheme="purple">
+          <MenuButton as={Button} leftIcon={<FiPlus />} colorScheme="purple" isDisabled={loading}>
             Ajouter un sous-événement
           </MenuButton>
           <MenuList>
@@ -250,7 +242,26 @@ export default function SubEventsPage() {
         </Menu>
       </Flex>
 
+      {/* État de chargement */}
+      {loading && (
+        <Card>
+          <CardBody textAlign="center" py={12}>
+            <Spinner size="xl" color="purple.500" mb={4} />
+            <Text color="gray.500">Chargement des sous-événements...</Text>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* État d'erreur */}
+      {error && !loading && (
+        <Alert status="error" mb={4}>
+          <AlertIcon />
+          {error}
+        </Alert>
+      )}
+
       {/* Liste des sous-événements */}
+      {!loading && !error && (
       <VStack spacing={4} align="stretch">
         {subEvents.length === 0 ? (
           <Card>
@@ -292,22 +303,22 @@ export default function SubEventsPage() {
                       <HStack spacing={4} color="gray.600" fontSize="sm">
                         <HStack>
                           <FiCalendar size={14} />
-                          <Text>{formatDate(subEvent.date)}</Text>
+                          <Text>{formatDate(subEvent.date || '')}</Text>
                         </HStack>
                         <HStack>
                           <FiClock size={14} />
-                          <Text>{subEvent.startTime} - {subEvent.endTime}</Text>
+                          <Text>{subEvent.start_time} - {subEvent.end_time}</Text>
                         </HStack>
                       </HStack>
                       <HStack mt={2} spacing={4} color="gray.600" fontSize="sm">
                         <HStack>
                           <FiMapPin size={14} />
-                          <Text>{subEvent.locationName}</Text>
+                          <Text>{subEvent.location_name}</Text>
                         </HStack>
                       </HStack>
-                      {subEvent.dressCode && (
+                      {subEvent.dress_code && (
                         <Badge mt={2} colorScheme="blue" variant="subtle">
-                          👔 {subEvent.dressCode}
+                          👔 {subEvent.dress_code}
                         </Badge>
                       )}
                       {subEvent.notes && (
@@ -347,6 +358,7 @@ export default function SubEventsPage() {
           ))
         )}
       </VStack>
+      )}
 
       {/* Modal d'édition */}
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
@@ -382,7 +394,7 @@ export default function SubEventsPage() {
                   <FormLabel>Date</FormLabel>
                   <Input
                     type="date"
-                    value={editingSubEvent.date}
+                    value={editingSubEvent.date || ''}
                     onChange={(e) => setEditingSubEvent(prev => ({ ...prev, date: e.target.value }))}
                   />
                 </FormControl>
@@ -390,16 +402,16 @@ export default function SubEventsPage() {
                   <FormLabel>Heure de début</FormLabel>
                   <Input
                     type="time"
-                    value={editingSubEvent.startTime}
-                    onChange={(e) => setEditingSubEvent(prev => ({ ...prev, startTime: e.target.value }))}
+                    value={editingSubEvent.start_time || ''}
+                    onChange={(e) => setEditingSubEvent(prev => ({ ...prev, start_time: e.target.value }))}
                   />
                 </FormControl>
                 <FormControl>
                   <FormLabel>Heure de fin</FormLabel>
                   <Input
                     type="time"
-                    value={editingSubEvent.endTime}
-                    onChange={(e) => setEditingSubEvent(prev => ({ ...prev, endTime: e.target.value }))}
+                    value={editingSubEvent.end_time || ''}
+                    onChange={(e) => setEditingSubEvent(prev => ({ ...prev, end_time: e.target.value }))}
                   />
                 </FormControl>
               </SimpleGrid>
@@ -407,8 +419,8 @@ export default function SubEventsPage() {
               <FormControl>
                 <FormLabel>Nom du lieu</FormLabel>
                 <Input
-                  value={editingSubEvent.locationName}
-                  onChange={(e) => setEditingSubEvent(prev => ({ ...prev, locationName: e.target.value }))}
+                  value={editingSubEvent.location_name || ''}
+                  onChange={(e) => setEditingSubEvent(prev => ({ ...prev, location_name: e.target.value }))}
                   placeholder="Ex: Mairie du 16ème"
                 />
               </FormControl>
@@ -416,8 +428,8 @@ export default function SubEventsPage() {
               <FormControl>
                 <FormLabel>Adresse</FormLabel>
                 <Input
-                  value={editingSubEvent.locationAddress}
-                  onChange={(e) => setEditingSubEvent(prev => ({ ...prev, locationAddress: e.target.value }))}
+                  value={editingSubEvent.location_address || ''}
+                  onChange={(e) => setEditingSubEvent(prev => ({ ...prev, location_address: e.target.value }))}
                   placeholder="Ex: 71 Avenue Henri Martin, 75016 Paris"
                 />
               </FormControl>
@@ -425,8 +437,8 @@ export default function SubEventsPage() {
               <FormControl>
                 <FormLabel>Code vestimentaire</FormLabel>
                 <Input
-                  value={editingSubEvent.dressCode}
-                  onChange={(e) => setEditingSubEvent(prev => ({ ...prev, dressCode: e.target.value }))}
+                  value={editingSubEvent.dress_code || ''}
+                  onChange={(e) => setEditingSubEvent(prev => ({ ...prev, dress_code: e.target.value }))}
                   placeholder="Ex: Tenue de soirée"
                 />
               </FormControl>
@@ -434,7 +446,7 @@ export default function SubEventsPage() {
               <FormControl>
                 <FormLabel>Notes</FormLabel>
                 <Textarea
-                  value={editingSubEvent.notes}
+                  value={editingSubEvent.notes || ''}
                   onChange={(e) => setEditingSubEvent(prev => ({ ...prev, notes: e.target.value }))}
                   placeholder="Informations supplémentaires pour les invités..."
                 />
@@ -442,10 +454,10 @@ export default function SubEventsPage() {
             </VStack>
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>
+            <Button variant="ghost" mr={3} onClick={onClose} isDisabled={saving}>
               Annuler
             </Button>
-            <Button colorScheme="purple" onClick={handleSave}>
+            <Button colorScheme="purple" onClick={handleSave} isLoading={saving}>
               {isEditing ? 'Enregistrer' : 'Ajouter'}
             </Button>
           </ModalFooter>

@@ -89,6 +89,21 @@ from playlist.routes import router as playlist_router
 from sub_events.routes import router as sub_events_router
 from groups.routes import router as groups_router
 
+
+# Créer les tables au démarrage
+@app.on_event("startup")
+async def create_tables():
+    """Crée les tables si elles n'existent pas"""
+    try:
+        from core.database import Base, _get_engine
+        from core import models  # Import pour enregistrer les modèles
+        engine = _get_engine()
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables created/verified")
+    except Exception as e:
+        print(f"⚠️ Database table creation error: {e}")
+
+
 # Enregistrement des routes
 app.include_router(events_router, prefix="/api/events", tags=["events"])
 app.include_router(seating_router, prefix="/api/events", tags=["seating"])

@@ -1,7 +1,7 @@
 /**
  * Page de gestion des RSVPs / Invités
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -47,6 +47,9 @@ import {
   Divider,
   Code,
   Tooltip,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import Layout from '../../../components/Layout';
@@ -63,23 +66,16 @@ import {
   FiCopy,
   FiFilter,
 } from 'react-icons/fi';
-
-// Groupes de démo
-const mockGroups = [
-  { id: '1', name: 'Famille proche', color: '#22C55E' },
-  { id: '2', name: 'Amis proches', color: '#3B82F6' },
-  { id: '3', name: 'Collègues', color: '#F59E0B' },
-  { id: '4', name: 'Famille éloignée', color: '#8B5CF6' },
-];
-
-// Données de démo avec groupe et code personnel
-const mockGuests = [
-  { id: '1', name: 'Jean Dupont', firstName: 'Jean', email: 'jean@example.com', phone: '+33612345678', status: 'confirmed', plusOnes: 1, plusOneNames: ['Marie Dupont'], dietary: 'Végétarien', allergies: '', menuChoice: 'poisson', respondedAt: '2026-02-10', groupId: '1', personalCode: 'JD7K2M' },
-  { id: '2', name: 'Sophie Martin', firstName: 'Sophie', email: 'sophie@example.com', phone: '+33698765432', status: 'confirmed', plusOnes: 0, plusOneNames: [], dietary: '', allergies: 'Arachides', menuChoice: 'viande', respondedAt: '2026-02-12', groupId: '2', personalCode: 'SM3N8P' },
-  { id: '3', name: 'Pierre Bernard', firstName: 'Pierre', email: 'pierre@example.com', phone: '+33611223344', status: 'pending', plusOnes: 2, plusOneNames: [], dietary: '', allergies: '', menuChoice: '', respondedAt: '', groupId: '3', personalCode: null },
-  { id: '4', name: 'Claire Leroy', firstName: 'Claire', email: 'claire@example.com', phone: '+33655667788', status: 'declined', plusOnes: 0, plusOneNames: [], dietary: '', allergies: '', menuChoice: '', respondedAt: '2026-02-15', groupId: '2', personalCode: 'CL9R4T' },
-  { id: '5', name: 'Marc Cohen', firstName: 'Marc', email: 'marc@example.com', phone: '+33699887766', status: 'confirmed', plusOnes: 1, plusOneNames: ['Rachel Cohen'], dietary: 'Casher', allergies: '', menuChoice: 'poisson', respondedAt: '2026-02-08', groupId: '1', personalCode: 'MC2W5X' },
-];
+import {
+  getGuests,
+  getInvitationGroups,
+  getRSVPStats,
+  updateGuestGroup,
+  generateGuestCodes,
+  Guest,
+  InvitationGroup,
+  RSVPStats,
+} from '../../../services/api';
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   confirmed: { label: 'Confirmé', color: 'green', icon: FiCheck },
@@ -90,33 +86,67 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 export default function GuestsPage() {
   const router = useRouter();
   const { id } = router.query;
+  const eventId = id as string;
   const toast = useToast();
   const { isOpen: isImportOpen, onOpen: onImportOpen, onClose: onImportClose } = useDisclosure();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
-  const [guests, setGuests] = useState(mockGuests);
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [groups, setGroups] = useState<InvitationGroup[]>([]);
+  const [stats, setStats] = useState<RSVPStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [generatingCodes, setGeneratingCodes] = useState(false);
 
-  const stats = {
-    confirmed: guests.filter(g => g.status === 'confirmed').length,
-    pending: guests.filter(g => g.status === 'pending').length,
-    declined: guests.filter(g => g.status === 'declined').length,
-    totalPlusOnes: guests.reduce((sum, g) => sum + g.plusOnes, 0),
-    withCode: guests.filter(g => g.personalCode).length,
+  // Charger les données depuis l'API
+  useEffect(() => {
+    if (!eventId) return;
+    
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [guestsData, groupsData, statsData] = await Promise.all([
+          getGuests(eventId),
+          getInvitationGroups(eventId),
+          getRSVPStats(eventId),
+        ]);
+        setGuests(guestsData);
+        setGroups(groupsData);
+        setStats(statsData);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Impossible de charger les données');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [eventId]);
+
+  // Stats calculées
+  const computedStats = {
+    confirmed: stats?.confirmed || guests.filter(g => g.status === 'confirmed').length,
+    pending: stats?.pending || guests.filter(g => g.status === 'pending').length,
+    declined: stats?.declined || guests.filter(g => g.status === 'declined').length,
+    totalPlusOnes: guests.reduce((sum, g) => sum + g.plus_ones, 0),
+    withCode: guests.filter(g => g.personal_code).length,
   };
 
   const filteredGuests = guests.filter((guest) => {
     const matchesSearch = guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         guest.email.toLowerCase().includes(searchQuery.toLowerCase());
+                         (guest.email?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
     const matchesStatus = statusFilter === 'all' || guest.status === statusFilter;
-    const matchesGroup = groupFilter === 'all' || guest.groupId === groupFilter;
+    const matchesGroup = groupFilter === 'all' || guest.invitation_group_id === groupFilter;
     return matchesSearch && matchesStatus && matchesGroup;
   });
 
-  const getGroupInfo = (groupId: string | null) => {
+  const getGroupInfo = (groupId: string | null | undefined) => {
     if (!groupId) return null;
-    return mockGroups.find(g => g.id === groupId);
+    return groups.find(g => g.id === groupId);
   };
 
   const handleExportCSV = () => {
@@ -128,8 +158,10 @@ export default function GuestsPage() {
     });
   };
 
-  const handleGenerateCodes = () => {
-    const guestsWithoutCode = guests.filter(g => !g.personalCode);
+  const handleGenerateCodes = async () => {
+    if (!eventId) return;
+    
+    const guestsWithoutCode = guests.filter(g => !g.personal_code);
     if (guestsWithoutCode.length === 0) {
       toast({
         title: 'Tous les invités ont déjà un code',
@@ -139,23 +171,29 @@ export default function GuestsPage() {
       return;
     }
     
-    // Génération fictive de codes
-    const updatedGuests = guests.map(g => {
-      if (!g.personalCode) {
-        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-        const code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        return { ...g, personalCode: code };
-      }
-      return g;
-    });
-    
-    setGuests(updatedGuests);
-    toast({
-      title: `${guestsWithoutCode.length} codes générés`,
-      description: 'Les codes personnels ont été créés pour les invités.',
-      status: 'success',
-      duration: 3000,
-    });
+    try {
+      setGeneratingCodes(true);
+      await generateGuestCodes(eventId);
+      // Recharger les invités pour récupérer les nouveaux codes
+      const updatedGuests = await getGuests(eventId);
+      setGuests(updatedGuests);
+      toast({
+        title: `${guestsWithoutCode.length} codes générés`,
+        description: 'Les codes personnels ont été créés pour les invités.',
+        status: 'success',
+        duration: 3000,
+      });
+    } catch (err) {
+      console.error('Error generating codes:', err);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de générer les codes',
+        status: 'error',
+        duration: 5000,
+      });
+    } finally {
+      setGeneratingCodes(false);
+    }
   };
 
   const handleExportQRCodes = () => {
@@ -176,15 +214,28 @@ export default function GuestsPage() {
     });
   };
 
-  const handleChangeGroup = (guestId: string, newGroupId: string) => {
-    setGuests(prev => prev.map(g => 
-      g.id === guestId ? { ...g, groupId: newGroupId } : g
-    ));
-    toast({
-      title: 'Groupe modifié',
-      status: 'success',
-      duration: 2000,
-    });
+  const handleChangeGroup = async (guestId: string, newGroupId: string) => {
+    if (!eventId) return;
+    
+    try {
+      await updateGuestGroup(eventId, guestId, newGroupId || null);
+      setGuests(prev => prev.map(g => 
+        g.id === guestId ? { ...g, invitation_group_id: newGroupId || undefined } : g
+      ));
+      toast({
+        title: 'Groupe modifié',
+        status: 'success',
+        duration: 2000,
+      });
+    } catch (err) {
+      console.error('Error updating group:', err);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de modifier le groupe',
+        status: 'error',
+        duration: 5000,
+      });
+    }
   };
 
   return (
@@ -193,14 +244,14 @@ export default function GuestsPage() {
         <Box>
           <Heading size="lg">RSVPs / Invités</Heading>
           <Text color="gray.600">
-            <Link href={`/events/${id}`}>
+            <Link href={`/events/${eventId}`}>
               <Text as="span" color="blue.600" cursor="pointer">← Retour à l'événement</Text>
             </Link>
           </Text>
         </Box>
         <HStack spacing={4}>
           <Menu>
-            <MenuButton as={Button} leftIcon={<FiUpload />} variant="outline">
+            <MenuButton as={Button} leftIcon={<FiUpload />} variant="outline" isDisabled={loading}>
               Import / Export
             </MenuButton>
             <MenuList>
@@ -211,8 +262,8 @@ export default function GuestsPage() {
                 Exporter CSV
               </MenuItem>
               <Divider />
-              <MenuItem icon={<FiKey />} onClick={handleGenerateCodes}>
-                Générer les codes personnels
+              <MenuItem icon={<FiKey />} onClick={handleGenerateCodes} isDisabled={generatingCodes}>
+                {generatingCodes ? 'Génération...' : 'Générer les codes personnels'}
               </MenuItem>
               <MenuItem icon={<FiDownload />} onClick={handleExportQRCodes}>
                 Exporter QR codes (ZIP)
@@ -231,7 +282,7 @@ export default function GuestsPage() {
           <CardBody>
             <Stat>
               <StatLabel>Confirmés</StatLabel>
-              <StatNumber color="green.500">{stats.confirmed}</StatNumber>
+              <StatNumber color="green.500">{computedStats.confirmed}</StatNumber>
             </Stat>
           </CardBody>
         </Card>
@@ -239,7 +290,7 @@ export default function GuestsPage() {
           <CardBody>
             <Stat>
               <StatLabel>En attente</StatLabel>
-              <StatNumber color="orange.500">{stats.pending}</StatNumber>
+              <StatNumber color="orange.500">{computedStats.pending}</StatNumber>
             </Stat>
           </CardBody>
         </Card>
@@ -247,7 +298,7 @@ export default function GuestsPage() {
           <CardBody>
             <Stat>
               <StatLabel>Déclinés</StatLabel>
-              <StatNumber color="red.500">{stats.declined}</StatNumber>
+              <StatNumber color="red.500">{computedStats.declined}</StatNumber>
             </Stat>
           </CardBody>
         </Card>
@@ -255,7 +306,7 @@ export default function GuestsPage() {
           <CardBody>
             <Stat>
               <StatLabel>Accompagnants</StatLabel>
-              <StatNumber>{stats.totalPlusOnes}</StatNumber>
+              <StatNumber>{computedStats.totalPlusOnes}</StatNumber>
             </Stat>
           </CardBody>
         </Card>
@@ -263,12 +314,33 @@ export default function GuestsPage() {
           <CardBody>
             <Stat>
               <StatLabel>Avec code</StatLabel>
-              <StatNumber color="purple.500">{stats.withCode}/{guests.length}</StatNumber>
+              <StatNumber color="purple.500">{computedStats.withCode}/{guests.length}</StatNumber>
             </Stat>
           </CardBody>
         </Card>
       </SimpleGrid>
 
+      {/* État de chargement */}
+      {loading && (
+        <Card>
+          <CardBody textAlign="center" py={12}>
+            <Spinner size="xl" color="purple.500" mb={4} />
+            <Text color="gray.500">Chargement des invités...</Text>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* État d'erreur */}
+      {error && !loading && (
+        <Alert status="error" mb={4}>
+          <AlertIcon />
+          {error}
+        </Alert>
+      )}
+
+      {/* Contenu principal */}
+      {!loading && !error && (
+      <>
       {/* Filtres */}
       <Card mb={6}>
         <CardBody>
@@ -299,7 +371,7 @@ export default function GuestsPage() {
               onChange={(e) => setGroupFilter(e.target.value)}
             >
               <option value="all">Tous les groupes</option>
-              {mockGroups.map(group => (
+              {groups.map(group => (
                 <option key={group.id} value={group.id}>{group.name}</option>
               ))}
             </Select>
@@ -326,39 +398,39 @@ export default function GuestsPage() {
             <Tbody>
               {filteredGuests.map((guest) => {
                 const status = statusConfig[guest.status];
-                const group = getGroupInfo(guest.groupId);
+                const group = getGroupInfo(guest.invitation_group_id);
                 return (
                   <Tr key={guest.id}>
                     <Td>
                       <Text fontWeight="medium">{guest.name}</Text>
-                      <Text fontSize="xs" color="gray.500">{guest.email}</Text>
+                      <Text fontSize="xs" color="gray.500">{guest.email || ''}</Text>
                     </Td>
                     <Td>
                       <Select
                         size="xs"
-                        value={guest.groupId || ''}
+                        value={guest.invitation_group_id || ''}
                         onChange={(e) => handleChangeGroup(guest.id, e.target.value)}
                         w="130px"
                         borderColor={group?.color || 'gray.200'}
                         _focus={{ borderColor: group?.color || 'blue.500' }}
                       >
                         <option value="">Non assigné</option>
-                        {mockGroups.map(g => (
+                        {groups.map(g => (
                           <option key={g.id} value={g.id}>{g.name}</option>
                         ))}
                       </Select>
                     </Td>
                     <Td>
-                      {guest.personalCode ? (
+                      {guest.personal_code ? (
                         <HStack spacing={1}>
-                          <Code fontSize="xs" colorScheme="purple">{guest.personalCode}</Code>
+                          <Code fontSize="xs" colorScheme="purple">{guest.personal_code}</Code>
                           <Tooltip label="Copier le code">
                             <IconButton
                               aria-label="Copier"
                               icon={<FiCopy />}
                               size="xs"
                               variant="ghost"
-                              onClick={() => handleCopyCode(guest.personalCode!)}
+                              onClick={() => handleCopyCode(guest.personal_code!)}
                             />
                           </Tooltip>
                         </HStack>
@@ -372,8 +444,8 @@ export default function GuestsPage() {
                       </Badge>
                     </Td>
                     <Td>
-                      {guest.plusOnes > 0 ? (
-                        <Text fontSize="sm">+{guest.plusOnes}</Text>
+                      {guest.plus_ones > 0 ? (
+                        <Text fontSize="sm">+{guest.plus_ones}</Text>
                       ) : '-'}
                     </Td>
                     <Td>
@@ -383,7 +455,7 @@ export default function GuestsPage() {
                       )}
                     </Td>
                     <Td>
-                      {guest.respondedAt ? new Date(guest.respondedAt).toLocaleDateString('fr-FR') : '-'}
+                      {guest.created_at ? new Date(guest.created_at).toLocaleDateString('fr-FR') : '-'}
                     </Td>
                     <Td>
                       <Menu>
@@ -409,6 +481,8 @@ export default function GuestsPage() {
           </Table>
         </CardBody>
       </Card>
+      </>
+      )}
 
       {/* Modal Import CSV */}
       <Modal isOpen={isImportOpen} onClose={onImportClose} size="xl">

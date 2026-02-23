@@ -1,7 +1,7 @@
 /**
  * Page de gestion des groupes d'invitation
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -38,6 +38,9 @@ import {
   MenuList,
   MenuItem,
   Divider,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import Layout from '../../../components/Layout';
@@ -49,6 +52,16 @@ import {
   FiUsers,
   FiCheck,
 } from 'react-icons/fi';
+import {
+  getSubEvents,
+  getInvitationGroups,
+  createInvitationGroup,
+  updateInvitationGroup,
+  deleteInvitationGroup,
+  linkSubEventsToGroup,
+  SubEvent,
+  InvitationGroup,
+} from '../../../services/api';
 
 // Couleurs disponibles pour les groupes
 const groupColors = [
@@ -62,67 +75,21 @@ const groupColors = [
   { value: '#6366F1', name: 'Indigo' },
 ];
 
-// Sous-événements de démo (normalement récupérés depuis l'API)
-const mockSubEvents = [
-  { id: '1', slug: 'mairie', name: 'Cérémonie civile' },
-  { id: '2', slug: 'henne', name: 'Soirée Henné' },
-  { id: '3', slug: 'houppa', name: 'Houppa' },
-  { id: '4', slug: 'party', name: 'Soirée & Dîner' },
-  { id: '5', slug: 'chabbat', name: 'Chabbat Hatan' },
-];
-
-// Groupes de démo
-const mockGroups = [
-  { 
-    id: '1', 
-    name: 'Famille proche', 
-    description: 'Parents, frères et sœurs, grands-parents',
-    color: '#22C55E',
-    subEventIds: ['1', '2', '3', '4', '5'],
-    guestCount: 45
-  },
-  { 
-    id: '2', 
-    name: 'Amis proches', 
-    description: 'Amis de longue date',
-    color: '#3B82F6',
-    subEventIds: ['1', '3', '4'],
-    guestCount: 60
-  },
-  { 
-    id: '3', 
-    name: 'Collègues', 
-    description: 'Collègues de travail',
-    color: '#F59E0B',
-    subEventIds: ['3', '4'],
-    guestCount: 35
-  },
-  { 
-    id: '4', 
-    name: 'Famille éloignée', 
-    description: 'Oncles, tantes, cousins',
-    color: '#8B5CF6',
-    subEventIds: ['2', '3', '4', '5'],
-    guestCount: 55
-  },
-];
-
-interface Group {
+// Interface locale pour le formulaire (avec subEventIds)
+interface GroupFormData {
   id: string;
   name: string;
   description: string;
   color: string;
   subEventIds: string[];
-  guestCount: number;
 }
 
-const emptyGroup: Group = {
+const emptyGroup: GroupFormData = {
   id: '',
   name: '',
   description: '',
   color: '#22C55E',
   subEventIds: [],
-  guestCount: 0
 };
 
 // Templates de groupes
@@ -150,20 +117,59 @@ const groupTemplates = [
 export default function GroupsPage() {
   const router = useRouter();
   const { id } = router.query;
+  const eventId = id as string;
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   
-  const [groups, setGroups] = useState(mockGroups);
-  const [editingGroup, setEditingGroup] = useState<Group>(emptyGroup);
+  const [groups, setGroups] = useState<InvitationGroup[]>([]);
+  const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingGroup, setEditingGroup] = useState<GroupFormData>(emptyGroup);
   const [isEditing, setIsEditing] = useState(false);
 
+  // Charger les groupes et sous-événements depuis l'API
+  useEffect(() => {
+    if (!eventId) return;
+    
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [groupsData, subEventsData] = await Promise.all([
+          getInvitationGroups(eventId),
+          getSubEvents(eventId),
+        ]);
+        setGroups(groupsData);
+        setSubEvents(subEventsData);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Impossible de charger les données');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [eventId]);
+
+  // Convertir InvitationGroup en GroupFormData pour l'édition
+  const groupToFormData = (group: InvitationGroup): GroupFormData => ({
+    id: group.id,
+    name: group.name,
+    description: group.description || '',
+    color: group.color || '#22C55E',
+    subEventIds: group.sub_events?.map(se => se.id) || [],
+  });
+
   const handleAddFromTemplate = (template: typeof groupTemplates[0]) => {
-    let subEventIds: string[] = [];
+    let selectedSubEventIds: string[] = [];
     
     if (template.allSubEvents) {
-      subEventIds = mockSubEvents.map(se => se.id);
+      selectedSubEventIds = subEvents.map(se => se.id);
     } else if (template.defaultSlugs) {
-      subEventIds = mockSubEvents
+      selectedSubEventIds = subEvents
         .filter(se => template.defaultSlugs?.includes(se.slug))
         .map(se => se.id);
     }
@@ -173,52 +179,97 @@ export default function GroupsPage() {
       name: template.name,
       description: template.description,
       color: template.color,
-      subEventIds
+      subEventIds: selectedSubEventIds
     });
     setIsEditing(false);
     onOpen();
   };
 
-  const handleEdit = (group: typeof mockGroups[0]) => {
-    setEditingGroup(group);
+  const handleEdit = (group: InvitationGroup) => {
+    setEditingGroup(groupToFormData(group));
     setIsEditing(true);
     onOpen();
   };
 
-  const handleSave = () => {
-    if (isEditing) {
-      setGroups(prev => prev.map(g => 
-        g.id === editingGroup.id ? editingGroup : g
-      ));
+  const handleSave = async () => {
+    if (!eventId) return;
+    
+    try {
+      setSaving(true);
+      
+      if (isEditing && editingGroup.id) {
+        // Mettre à jour le groupe
+        const updated = await updateInvitationGroup(eventId, editingGroup.id, {
+          name: editingGroup.name,
+          description: editingGroup.description,
+          color: editingGroup.color,
+        });
+        // Mettre à jour les liens vers les sous-événements
+        await linkSubEventsToGroup(eventId, editingGroup.id, editingGroup.subEventIds);
+        
+        setGroups(prev => prev.map(g => 
+          g.id === editingGroup.id ? { ...updated, sub_events: subEvents.filter(se => editingGroup.subEventIds.includes(se.id)) } : g
+        ));
+        toast({
+          title: 'Groupe modifié',
+          status: 'success',
+          duration: 3000,
+        });
+      } else {
+        // Créer le groupe
+        const created = await createInvitationGroup(eventId, {
+          name: editingGroup.name,
+          description: editingGroup.description,
+          color: editingGroup.color,
+        });
+        // Lier les sous-événements
+        if (editingGroup.subEventIds.length > 0) {
+          await linkSubEventsToGroup(eventId, created.id, editingGroup.subEventIds);
+        }
+        
+        setGroups(prev => [...prev, { ...created, sub_events: subEvents.filter(se => editingGroup.subEventIds.includes(se.id)) }]);
+        toast({
+          title: 'Groupe créé',
+          status: 'success',
+          duration: 3000,
+        });
+      }
+      onClose();
+      setEditingGroup(emptyGroup);
+    } catch (err) {
+      console.error('Error saving group:', err);
       toast({
-        title: 'Groupe modifié',
-        status: 'success',
-        duration: 3000,
+        title: 'Erreur',
+        description: 'Impossible de sauvegarder le groupe',
+        status: 'error',
+        duration: 5000,
       });
-    } else {
-      const newGroup = {
-        ...editingGroup,
-        id: Date.now().toString(),
-      };
-      setGroups(prev => [...prev, newGroup]);
-      toast({
-        title: 'Groupe créé',
-        status: 'success',
-        duration: 3000,
-      });
+    } finally {
+      setSaving(false);
     }
-    onClose();
-    setEditingGroup(emptyGroup);
   };
 
-  const handleDelete = (groupId: string) => {
-    setGroups(prev => prev.filter(g => g.id !== groupId));
-    toast({
-      title: 'Groupe supprimé',
-      description: 'Les invités de ce groupe ont été désassignés.',
-      status: 'info',
-      duration: 3000,
-    });
+  const handleDelete = async (groupId: string) => {
+    if (!eventId) return;
+    
+    try {
+      await deleteInvitationGroup(eventId, groupId);
+      setGroups(prev => prev.filter(g => g.id !== groupId));
+      toast({
+        title: 'Groupe supprimé',
+        description: 'Les invités de ce groupe ont été désassignés.',
+        status: 'info',
+        duration: 3000,
+      });
+    } catch (err) {
+      console.error('Error deleting group:', err);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de supprimer le groupe',
+        status: 'error',
+        duration: 5000,
+      });
+    }
   };
 
   const handleSubEventToggle = (subEventId: string) => {
@@ -231,10 +282,10 @@ export default function GroupsPage() {
   };
 
   const getSubEventName = (subEventId: string) => {
-    return mockSubEvents.find(se => se.id === subEventId)?.name || '';
+    return subEvents.find(se => se.id === subEventId)?.name || '';
   };
 
-  const totalGuests = groups.reduce((sum, g) => sum + g.guestCount, 0);
+  const totalGuests = groups.reduce((sum, g) => sum + (g.guest_count || 0), 0);
 
   return (
     <Layout>
@@ -242,13 +293,13 @@ export default function GroupsPage() {
         <Box>
           <Heading size="lg">Groupes d'invitation</Heading>
           <Text color="gray.600">
-            <Link href={`/events/${id}`}>
+            <Link href={`/events/${eventId}`}>
               <Text as="span" color="blue.600" cursor="pointer">← Retour à l'événement</Text>
             </Link>
           </Text>
         </Box>
         <Menu>
-          <MenuButton as={Button} leftIcon={<FiPlus />} colorScheme="purple">
+          <MenuButton as={Button} leftIcon={<FiPlus />} colorScheme="purple" isDisabled={loading}>
             Créer un groupe
           </MenuButton>
           <MenuList>
@@ -269,6 +320,27 @@ export default function GroupsPage() {
         </Menu>
       </Flex>
 
+      {/* État de chargement */}
+      {loading && (
+        <Card>
+          <CardBody textAlign="center" py={12}>
+            <Spinner size="xl" color="purple.500" mb={4} />
+            <Text color="gray.500">Chargement des groupes...</Text>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* État d'erreur */}
+      {error && !loading && (
+        <Alert status="error" mb={4}>
+          <AlertIcon />
+          {error}
+        </Alert>
+      )}
+
+      {/* Contenu principal */}
+      {!loading && !error && (
+      <>
       {/* Résumé */}
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={8}>
         <Card>
@@ -305,7 +377,7 @@ export default function GroupsPage() {
               </Box>
               <Box>
                 <Text color="gray.600" fontSize="sm">Sous-événements</Text>
-                <Text fontSize="2xl" fontWeight="bold">{mockSubEvents.length}</Text>
+                <Text fontSize="2xl" fontWeight="bold">{subEvents.length}</Text>
               </Box>
             </HStack>
           </CardBody>
@@ -343,7 +415,7 @@ export default function GroupsPage() {
                       <HStack mb={1}>
                         <Heading size="md">{group.name}</Heading>
                         <Badge colorScheme="gray">
-                          {group.guestCount} invités
+                          {group.guest_count || 0} invités
                         </Badge>
                       </HStack>
                       {group.description && (
@@ -352,8 +424,8 @@ export default function GroupsPage() {
                         </Text>
                       )}
                       <HStack spacing={2} flexWrap="wrap" gap={2}>
-                        {mockSubEvents.map((subEvent) => {
-                          const isIncluded = group.subEventIds.includes(subEvent.id);
+                        {subEvents.map((subEvent) => {
+                          const isIncluded = group.sub_events?.some(se => se.id === subEvent.id) || false;
                           return (
                             <Badge
                               key={subEvent.id}
@@ -391,6 +463,8 @@ export default function GroupsPage() {
           ))
         )}
       </VStack>
+      </>
+      )}
 
       {/* Modal d'édition */}
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
@@ -446,7 +520,7 @@ export default function GroupsPage() {
                   Cochez les événements auxquels les membres de ce groupe sont invités.
                 </Text>
                 <Stack spacing={3}>
-                  {mockSubEvents.map((subEvent) => (
+                  {subEvents.map((subEvent) => (
                     <Checkbox
                       key={subEvent.id}
                       isChecked={editingGroup.subEventIds.includes(subEvent.id)}
@@ -461,12 +535,13 @@ export default function GroupsPage() {
             </VStack>
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>
+            <Button variant="ghost" mr={3} onClick={onClose} isDisabled={saving}>
               Annuler
             </Button>
             <Button 
               colorScheme="purple" 
               onClick={handleSave}
+              isLoading={saving}
               isDisabled={!editingGroup.name}
             >
               {isEditing ? 'Enregistrer' : 'Créer'}

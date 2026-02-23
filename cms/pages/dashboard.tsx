@@ -1,6 +1,7 @@
 /**
  * Dashboard - Design professionnel
  */
+import { useState, useEffect } from 'react';
 import { 
   Box, 
   Heading, 
@@ -28,6 +29,9 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import Layout from '../components/Layout';
@@ -44,50 +48,33 @@ import {
   FiMessageSquare,
   FiArrowUpRight,
   FiArrowDownRight,
+  FiRefreshCw,
 } from 'react-icons/fi';
 
-// Données de démo
-const mockEvents = [
-  {
-    id: '1',
-    title: 'Sarah & David',
-    type: 'wedding',
-    date: '2026-06-15',
-    status: 'live',
-    pack: 'premium',
-    rsvps: { confirmed: 98, pending: 32, declined: 12 },
-    image: null,
-  },
-  {
-    id: '2',
-    title: 'Nathan - Bar Mitzvah',
-    type: 'bar_mitzvah',
-    date: '2026-07-20',
-    status: 'pending_review',
-    pack: 'essential',
-    rsvps: { confirmed: 0, pending: 0, declined: 0 },
-    image: null,
-  },
-  {
-    id: '3',
-    title: 'Emma & Thomas',
-    type: 'wedding',
-    date: '2026-09-05',
-    status: 'draft',
-    pack: 'vip',
-    rsvps: { confirmed: 0, pending: 0, declined: 0 },
-    image: null,
-  },
-];
+// Types
+interface EventRSVPs {
+  confirmed: number;
+  pending: number;
+  declined: number;
+}
 
-const mockStats = {
-  activeEvents: 3,
-  totalRevenue: 2480,
-  totalRsvps: 142,
-  photosUploaded: 347,
-  monthlyGrowth: 15,
-  revenueGrowth: 23,
-};
+interface EventData {
+  id: string;
+  title: string;
+  type: string;
+  event_date: string;
+  status: string;
+  pack: string;
+  rsvps?: EventRSVPs;
+  image?: string | null;
+}
+
+interface DashboardStats {
+  activeEvents: number;
+  totalRevenue: number;
+  totalRsvps: number;
+  photosUploaded: number;
+}
 
 const statusConfig: Record<string, { color: string; bg: string; label: string }> = {
   draft: { color: 'gray.600', bg: 'gray.100', label: 'Brouillon' },
@@ -164,13 +151,14 @@ function StatCard({ label, value, icon, change, color }: StatCardProps) {
 }
 
 interface EventRowProps {
-  event: typeof mockEvents[0];
+  event: EventData;
 }
 
 function EventRow({ event }: EventRowProps) {
   const status = statusConfig[event.status] || statusConfig.draft;
-  const totalRsvps = event.rsvps.confirmed + event.rsvps.pending + event.rsvps.declined;
-  const confirmRate = totalRsvps > 0 ? Math.round((event.rsvps.confirmed / totalRsvps) * 100) : 0;
+  const rsvps = event.rsvps || { confirmed: 0, pending: 0, declined: 0 };
+  const totalRsvps = rsvps.confirmed + rsvps.pending + rsvps.declined;
+  const confirmRate = totalRsvps > 0 ? Math.round((rsvps.confirmed / totalRsvps) * 100) : 0;
 
   return (
     <Tr _hover={{ bg: 'gray.50' }} transition="all 0.15s">
@@ -192,8 +180,8 @@ function EventRow({ event }: EventRowProps) {
       <Td>
         <HStack spacing={2}>
           <Icon as={FiCalendar} color="gray.400" boxSize={4} />
-          <Text fontSize="sm" color="gray.600">
-            {new Date(event.date).toLocaleDateString('fr-FR', {
+          <Text fontSize="sm" color="gray.600" suppressHydrationWarning>
+            {new Date(event.event_date).toLocaleDateString('fr-FR', {
               day: 'numeric',
               month: 'short',
               year: 'numeric',
@@ -232,7 +220,7 @@ function EventRow({ event }: EventRowProps) {
         <VStack align="flex-start" spacing={1}>
           <HStack spacing={2}>
             <Text fontSize="sm" fontWeight="600" color="gray.900">
-              {event.rsvps.confirmed}
+              {rsvps.confirmed}
             </Text>
             <Text fontSize="sm" color="gray.400">
               / {totalRsvps || '-'} confirmés
@@ -295,6 +283,69 @@ function EventRow({ event }: EventRowProps) {
 
 export default function Dashboard() {
   const cardBg = useColorModeValue('white', 'gray.800');
+  
+  // State pour éviter les erreurs d'hydratation SSR
+  const [mounted, setMounted] = useState(false);
+  
+  // State pour les données
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    activeEvents: 0,
+    totalRevenue: 0,
+    totalRsvps: 0,
+    photosUploaded: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Marquer comme monté côté client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Charger les données
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/events');
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des événements');
+      }
+      const eventsData = await response.json();
+      
+      // Adapter les données au format attendu
+      const formattedEvents: EventData[] = eventsData.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        type: e.type,
+        event_date: e.event_date,
+        status: e.status,
+        pack: e.pack,
+        rsvps: { confirmed: 0, pending: 0, declined: 0 }, // TODO: charger les stats RSVP
+        image: null,
+      }));
+      
+      setEvents(formattedEvents);
+      
+      // Calculer les stats
+      setStats({
+        activeEvents: eventsData.filter((e: any) => e.status === 'live').length,
+        totalRevenue: eventsData.length * 600, // Estimation
+        totalRsvps: 0, // TODO: charger les vrais stats
+        photosUploaded: 0,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Une erreur est survenue');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   return (
     <Layout>
@@ -307,45 +358,60 @@ export default function Dashboard() {
             Bienvenue ! Voici un aperçu de vos événements.
           </Text>
         </Box>
-        <Link href="/events/new">
-          <Button 
-            leftIcon={<FiPlus />} 
-            bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-            color="white"
-            _hover={{ transform: 'translateY(-1px)', boxShadow: 'lg' }}
+        <HStack spacing={3}>
+          <IconButton
+            aria-label="Rafraîchir"
+            icon={<FiRefreshCw />}
+            onClick={loadData}
+            isLoading={loading}
+            variant="ghost"
             borderRadius="lg"
-            fontWeight="600"
-            transition="all 0.2s"
-          >
-            Nouvel événement
-          </Button>
-        </Link>
+          />
+          <Link href="/events/new">
+            <Button 
+              leftIcon={<FiPlus />} 
+              bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+              color="white"
+              _hover={{ transform: 'translateY(-1px)', boxShadow: 'lg' }}
+              borderRadius="lg"
+              fontWeight="600"
+              transition="all 0.2s"
+            >
+              Nouvel événement
+            </Button>
+          </Link>
+        </HStack>
       </Flex>
+
+      {error && (
+        <Alert status="error" mb={6} borderRadius="lg">
+          <AlertIcon />
+          {error}
+        </Alert>
+      )}
 
       <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={8}>
         <StatCard 
           label="Événements actifs"
-          value={mockStats.activeEvents}
+          value={stats.activeEvents}
           icon={FiCalendar}
-          change={mockStats.monthlyGrowth}
           color="purple"
         />
         <StatCard 
           label="Chiffre d'affaires"
-          value={`${mockStats.totalRevenue.toLocaleString('fr-FR')} €`}
+          value={mounted ? `${stats.totalRevenue.toLocaleString('fr-FR')} €` : '0 €'}
           icon={FiDollarSign}
-          change={mockStats.revenueGrowth}
           color="green"
         />
         <StatCard 
           label="RSVPs confirmés"
-          value={mockStats.totalRsvps}
+          value={stats.totalRsvps}
           icon={FiUsers}
           color="blue"
         />
         <StatCard 
           label="Photos uploadées"
-          value={mockStats.photosUploaded}
+          value={stats.photosUploaded}
           icon={FiImage}
           color="orange"
         />
@@ -394,9 +460,29 @@ export default function Dashboard() {
                 </Tr>
               </Thead>
               <Tbody>
-                {mockEvents.map((event) => (
-                  <EventRow key={event.id} event={event} />
-                ))}
+                {loading ? (
+                  <Tr>
+                    <Td colSpan={6} textAlign="center" py={10}>
+                      <Spinner size="lg" color="purple.500" />
+                      <Text mt={4} color="gray.500">Chargement des événements...</Text>
+                    </Td>
+                  </Tr>
+                ) : events.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={6} textAlign="center" py={10}>
+                      <Text color="gray.500">Aucun événement trouvé</Text>
+                      <Link href="/events/new">
+                        <Button mt={4} leftIcon={<FiPlus />} colorScheme="purple" size="sm">
+                          Créer votre premier événement
+                        </Button>
+                      </Link>
+                    </Td>
+                  </Tr>
+                ) : (
+                  events.map((event) => (
+                    <EventRow key={event.id} event={event} />
+                  ))
+                )}
               </Tbody>
             </Table>
           </Box>
