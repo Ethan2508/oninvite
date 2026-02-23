@@ -17,8 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copier le code source
 COPY . .
 
+# Rendre le script exécutable
+RUN chmod +x start.sh
+
 # Exposer le port
 EXPOSE 8000
 
-# Commande par défaut - Railway injecte PORT comme env var
-CMD uvicorn core.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Commande par défaut - utilise le script qui gère PORT
+CMD ["./start.sh"]
