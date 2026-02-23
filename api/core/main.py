@@ -94,14 +94,16 @@ from groups.routes import router as groups_router
 @app.on_event("startup")
 async def create_tables():
     """Crée les tables si elles n'existent pas"""
+    print("🚀 Starting SaveTheDate API...")
     try:
         from core.database import Base, _get_engine
-        from core import models  # Import pour enregistrer les modèles
+        import core.models  # Import pour enregistrer les modèles
         engine = _get_engine()
         Base.metadata.create_all(bind=engine)
         print("✅ Database tables created/verified")
     except Exception as e:
         print(f"⚠️ Database table creation error: {e}")
+        # Ne pas bloquer le démarrage
 
 
 # Enregistrement des routes
