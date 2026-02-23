@@ -11,7 +11,9 @@ from core.database import get_db
 from core.models import Event, PushNotification
 from core.schemas import (
     NotificationCreate, NotificationResponse, SuccessResponse
-)from core.security import verify_admin_api_keyfrom .firebase_service import send_to_event, is_firebase_available
+)
+from core.security import verify_admin_api_key
+from .firebase_service import send_to_event, is_firebase_available
 
 router = APIRouter()
 
