@@ -171,6 +171,28 @@ export default function BuildPage() {
         </Card>
       </SimpleGrid>
 
+      {/* Profil EAS */}
+      <Card mb={8}>
+        <CardHeader>
+          <Heading size="md">Configuration EAS</Heading>
+        </CardHeader>
+        <CardBody>
+          <HStack justify="space-between">
+            <Box>
+              <Text>Générer le profil EAS personnalisé pour cet événement</Text>
+              <Text fontSize="sm" color="gray.600">
+                Crée la configuration de build avec les identifiants uniques
+              </Text>
+            </Box>
+            <Link href={`/events/${id}/build-app`}>
+              <Button colorScheme="purple" leftIcon={<FiPackage />}>
+                Configurer EAS
+              </Button>
+            </Link>
+          </HStack>
+        </CardBody>
+      </Card>
+
       {/* Nouveau build */}
       <Card mb={8}>
         <CardHeader>
