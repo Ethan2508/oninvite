@@ -11,7 +11,9 @@ from core.models import Event
 from core.schemas import (
     EventCreate, EventUpdate, EventResponse, 
     EventConfigResponse, SuccessResponse
-)from core.security import verify_admin_api_key
+)
+from core.security import verify_admin_api_key
+
 router = APIRouter()
 
 
