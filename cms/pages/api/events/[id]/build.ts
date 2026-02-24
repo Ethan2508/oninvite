@@ -90,13 +90,21 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Vérifier l'authentification
-  const session = await getServerSession(req, res, authOptions);
-  if (!session) {
-    return res.status(401).json({ error: 'Non authentifié' });
-  }
+  try {
+    // Vérifier l'authentification
+    let session;
+    try {
+      session = await getServerSession(req, res, authOptions);
+    } catch (authError) {
+      console.error('Auth error:', authError);
+      return res.status(500).json({ error: 'Erreur d\'authentification', details: String(authError) });
+    }
+    
+    if (!session) {
+      return res.status(401).json({ error: 'Non authentifié' });
+    }
 
-  const { id } = req.query;
+    const { id } = req.query;
 
   if (req.method === 'GET') {
     // Lister les builds existants
@@ -156,6 +164,7 @@ export default async function handler(
 
         if (!eventRes.ok) {
           // Créer un événement par défaut si l'API backend n'est pas accessible
+          console.log(`API returned ${eventRes.status} for event ${id}, using fallback`);
           event = {
             id: id as string,
             slug: `event-${(id as string).substring(0, 8)}`,
@@ -163,10 +172,35 @@ export default async function handler(
             type: 'wedding',
           };
         } else {
-          event = await eventRes.json();
+          // Vérifier que c'est bien du JSON avant de parser
+          const contentType = eventRes.headers.get('content-type');
+          const responseText = await eventRes.text();
+          
+          if (contentType?.includes('application/json') && responseText) {
+            try {
+              event = JSON.parse(responseText);
+            } catch (parseError) {
+              console.error('JSON parse error:', parseError, 'Response:', responseText.substring(0, 100));
+              event = {
+                id: id as string,
+                slug: `event-${(id as string).substring(0, 8)}`,
+                title: 'Mon Événement',
+                type: 'wedding',
+              };
+            }
+          } else {
+            console.log('Non-JSON response:', responseText.substring(0, 100));
+            event = {
+              id: id as string,
+              slug: `event-${(id as string).substring(0, 8)}`,
+              title: 'Mon Événement', 
+              type: 'wedding',
+            };
+          }
         }
       } catch (fetchError) {
         // Fallback si l'API est down
+        console.error('Fetch error:', fetchError);
         event = {
           id: id as string,
           slug: `event-${(id as string).substring(0, 8)}`,
@@ -249,4 +283,8 @@ export default async function handler(
   }
 
   return res.status(405).json({ error: 'Méthode non autorisée' });
+  } catch (globalError: any) {
+    console.error('Global handler error:', globalError);
+    return res.status(500).json({ error: 'Erreur serveur', details: String(globalError) });
+  }
 }
