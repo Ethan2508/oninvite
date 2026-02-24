@@ -161,10 +161,12 @@ export default async function handler(
       // Récupérer les données de l'événement
       let event: EventData;
       try {
-        const eventRes = await fetch(`${API_URL}/api/events/${id}`, {
+        // Ajouter slash final pour éviter redirection 307
+        const eventRes = await fetch(`${API_URL}/api/events/${id}/`, {
           headers: {
             'x-api-key': ADMIN_API_KEY || '',
           },
+          redirect: 'follow',
         });
 
         if (!eventRes.ok) {
