@@ -137,7 +137,12 @@ export default async function handler(
         });
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        data = { data: [] };
+      }
       return res.status(200).json({ builds: data.data || [], configured: true });
     } catch (error: any) {
       console.error('Error fetching builds:', error);
@@ -252,7 +257,12 @@ export default async function handler(
         );
 
         if (buildRes.ok) {
-          const buildData = await buildRes.json();
+          let buildData;
+          try {
+            buildData = await buildRes.json();
+          } catch {
+            buildData = { data: {} };
+          }
           buildResults.push({
             platform: p,
             buildId: buildData.data?.id,
@@ -260,10 +270,16 @@ export default async function handler(
             url: `https://expo.dev/accounts/oninvite/projects/${event.slug}/builds/${buildData.data?.id}`
           });
         } else {
-          const error = await buildRes.json();
+          let errorMsg = 'Erreur de build';
+          try {
+            const errorData = await buildRes.json();
+            errorMsg = errorData.errors?.[0]?.message || errorMsg;
+          } catch {
+            // Ignorer erreur de parsing
+          }
           buildResults.push({
             platform: p,
-            error: error.errors?.[0]?.message || 'Erreur de build',
+            error: errorMsg,
             status: 'failed'
           });
         }
